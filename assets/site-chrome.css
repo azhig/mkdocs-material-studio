@@ -1,0 +1,341 @@
+/* Site header and the left navigation panel — styles shared by both modes.
+   The markup is built by webviews/shared/siteChrome.ts, while the placement
+   (sticky, width, toggling by a button) is defined by each mode on its own:
+   visual.css and the preview shell.
+
+   The selectors are deliberately compound (.mv-head .…, .mv-nav .…): in the visual editor
+   the md-typeset class sits on <body>, and the Material styles for ul/li/button
+   would beat a single class. */
+
+/* ---------- Header ---------- */
+.mv-head {
+  background: var(--md-primary-fg-color, #4051b5);
+  color: var(--md-primary-bg-color, #fff);
+  /* Sizes follow Material: the tabs are .7rem, the site name .9rem, and one rem
+     is 20px because the theme sets 125% on <html>. The font is the theme's own
+     — this strip belongs to the page, not to the VS Code chrome. */
+  font-family: var(--md-text-font-family, var(--vscode-font-family));
+  font-size: 0.7rem;
+  user-select: none;
+}
+.mv-head .mvh-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 6px 12px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+.mv-head .mvh-logo {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mv-head .mvh-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.mv-head .mvh-logo svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+/* No logo configured — draw a neutral page glyph. */
+.mv-head .mvh-logo-default::before {
+  content: "";
+  width: 13px;
+  height: 16px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+.mv-head .mvh-title {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+.mv-head .mvh-grow {
+  flex: 1;
+}
+.mv-head .mvh-tabs {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mv-head .mvh-tabs::-webkit-scrollbar {
+  display: none;
+}
+.mv-head .mvh-tab {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0.75;
+  border-bottom: 2px solid transparent;
+}
+.mv-head .mvh-tab:hover {
+  opacity: 1;
+  background: #ffffff22;
+}
+.mv-head .mvh-tab.on {
+  opacity: 1;
+  font-weight: 700;
+  border-bottom-color: currentColor;
+}
+.mv-head .mvh-tab:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.mv-head .mvh-repo {
+  flex: 0 0 auto;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 3px 8px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.mv-head .mvh-repo:hover {
+  opacity: 1;
+  background: #ffffff22;
+}
+/* The mkdocs.yml button. It belongs to the editor rather than to the site, so
+   it is drawn as a plain glyph next to the repository link — present, but not
+   competing with the site's own controls. Only the visual editor asks for it;
+   the preview has one on its toolbar instead. */
+.mv-head .mvh-settings {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  padding: 0;
+  opacity: 0.75;
+}
+.mv-head .mvh-settings:hover {
+  opacity: 1;
+  background: #ffffff22;
+}
+.mv-head .mvh-settings .codicon {
+  font-size: 15px;
+}
+
+/* ---------- Left panel ---------- */
+/* Colors come from the Material palette (--md-…) rather than the VS Code theme:
+   the content can be switched to the dark scheme manually while VS Code stays
+   light, and then the panel on a dark background would be nearly unreadable. */
+.mv-nav {
+  box-sizing: border-box;
+  /* Material's own metrics for a nav: .7rem over 1.3 (main.css, `.md-nav`). */
+  font-family: var(--md-text-font-family, var(--vscode-font-family));
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+  background: var(--md-default-bg-color, #fff);
+  border-right: 1px solid var(--md-default-fg-color--lightest, #0000000d);
+  user-select: none;
+}
+/* `.md-nav__title` of the theme: .8rem, bold, in the muted foreground. */
+.mv-nav .mvn-head {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light, #0000008a);
+  padding: 8px 10px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The title of the open tab. Material keeps it in place while the list scrolls
+   (`.md-nav--lifted … .md-nav__link`), and it is not a link: the tab in the
+   header is what switches sections. */
+.mv-nav .mvn-head-tab {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+  background: var(--md-default-bg-color, #fff);
+  box-shadow: 0 0 0.4rem 0.4rem var(--md-default-bg-color, #fff);
+}
+.mv-nav .mvn-empty {
+  color: var(--md-default-fg-color--light, #0000008a);
+  padding: 4px 10px;
+}
+.mv-nav .mvn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mv-nav .mvn-list .mvn-list {
+  margin-left: 11px;
+  padding-left: 5px;
+  border-left: 1px solid var(--md-default-fg-color--lightest, #0000000d);
+  display: none;
+}
+.mv-nav .mvn-sec.open > .mvn-list {
+  display: block;
+}
+.mv-nav .mvn-node {
+  margin: 0;
+  padding: 0;
+}
+.mv-nav .mvn-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mv-nav .mvn-item > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mv-nav .mvn-item:hover {
+  background: var(--md-default-fg-color--lightest, #00000012);
+  opacity: 1;
+}
+.mv-nav .mvn-page.on {
+  color: var(--md-typeset-a-color, var(--md-accent-fg-color, #526cfe));
+  font-weight: 600;
+  opacity: 1;
+}
+/* Section caret: our own triangle, so that the icon font is not pulled into the preview. */
+.mv-nav .mvn-caret {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  opacity: 0.7;
+  transition: transform 0.12s;
+}
+.mv-nav .mvn-sec.open > .mvn-toggle .mvn-caret {
+  transform: rotate(90deg);
+}
+
+/* ---------- “On this page”: headings of the current page ---------- */
+/* Same colors as the left panel — the Material palette, so the panel follows the
+   document scheme rather than the VS Code theme. */
+.mv-toc {
+  box-sizing: border-box;
+  font-family: var(--md-text-font-family, var(--vscode-font-family));
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+  background: var(--md-default-bg-color, #fff);
+  border-left: 1px solid var(--md-default-fg-color--lightest, #0000000d);
+  user-select: none;
+  padding-bottom: 2rem;
+}
+.mv-toc .mvt-head {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light, #0000008a);
+  padding: 8px 10px 6px;
+}
+.mv-toc .mvt-empty {
+  color: var(--md-default-fg-color--light, #0000008a);
+  padding: 4px 10px;
+}
+.mv-toc .mvt-item {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.82;
+  padding: 3px 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    color 0.12s,
+    opacity 0.12s;
+}
+.mv-toc .mvt-item:hover {
+  background: var(--md-default-fg-color--lightest, #00000012);
+  opacity: 1;
+}
+/* Nesting by heading level: the deeper it is, the larger the indent. */
+.mv-toc .mvt-l1 {
+  padding-left: 10px;
+  font-weight: 600;
+}
+.mv-toc .mvt-l2 {
+  padding-left: 18px;
+}
+.mv-toc .mvt-l3 {
+  padding-left: 30px;
+}
+.mv-toc .mvt-l4 {
+  padding-left: 42px;
+}
+.mv-toc .mvt-l5 {
+  padding-left: 54px;
+}
+.mv-toc .mvt-l6 {
+  padding-left: 66px;
+}
+/* The section currently on screen, the way Material marks it: accent color and a
+   bar at the left edge. The bar is a pseudo-element rather than a border — a
+   border would shift the text by a pixel on every change of section. */
+.mv-toc .mvt-item.on {
+  color: var(--md-typeset-a-color, var(--md-accent-fg-color, #526cfe));
+  opacity: 1;
+  font-weight: 600;
+}
+.mv-toc .mvt-item.on::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--md-typeset-a-color, var(--md-accent-fg-color, #526cfe));
+}

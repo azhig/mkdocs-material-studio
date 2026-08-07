@@ -1,0 +1,11 @@
+{
+  // The integration tests are the one part of test/ that talks to the real
+  // editor, so they are checked against the real @types/vscode — not against
+  // the stand-in that tsconfig.test.json maps `vscode` to.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vscode", "mocha"]
+  },
+  "exclude": ["node_modules", "dist"],
+  "include": ["test/integration/**/*.ts"]
+}

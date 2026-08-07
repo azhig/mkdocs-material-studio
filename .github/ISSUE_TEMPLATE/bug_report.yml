@@ -1,0 +1,35 @@
+name: Bug report
+description: Something works differently than expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: markdown
+    attributes:
+      label: Markdown that reproduces it
+      description: >
+        The smallest fragment that shows the problem. If the file is changed
+        incorrectly, the “before” and “after” of the fragment help the most.
+      render: markdown
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: "Extension 0.1.0, VS Code 1.95.0, macOS 15"
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: "The output of the “MkDocs: Show Log” command, if there is anything there."
+      render: text

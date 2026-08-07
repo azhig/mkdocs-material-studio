@@ -1,0 +1,59 @@
+# Sources and tooling — the VSIX ships only the built bundles and assets.
+.github/**
+.vscode/**
+.claude/**
+.git/**
+src/**
+webviews/**
+test/**
+scripts/**
+samples/**
+node_modules/**
+esbuild.mjs
+tsconfig*.json
+vitest.config.*
+.vscode-test.mjs
+.vscode-test/**
+# Built only by `node esbuild.mjs --tests`, but a leftover must not ride along.
+dist/test/**
+eslint.config.mjs
+.prettierrc.json
+.prettierignore
+.editorconfig
+.nvmrc
+package-lock.json
+Makefile
+coverage/**
+**/*.map
+**/*.ts
+dist/webview/harness.js
+
+# Docs meant for the repository, not for the Marketplace page.
+DEVELOPMENT.md
+RELEASING.md
+CONTRIBUTING.md
+SECURITY.md
+CODE_OF_CONDUCT.md
+
+# The icon source; the published package needs assets/icon.png only.
+assets/icon.svg
+
+# The README's pictures. `vsce` rewrites the README's relative links to
+# raw.githubusercontent.com, so the displayed page — on the Marketplace and on
+# the extension page inside VS Code — never reads these files. Shipping them
+# would be dead weight. See RELEASING.md.
+docs/**
+
+# A picture left in assets/ while working must not ride along into the package —
+# the icon is the only one that belongs there, and it is the one file VS Code
+# reads locally. The subfolders (icons, vendor, …) are not touched by this.
+assets/*.png
+assets/*.jpg
+assets/*.jpeg
+assets/*.gif
+assets/*.webp
+assets/*.svg
+!assets/icon.png
+
+.gitignore
+.vscodeignore

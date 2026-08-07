@@ -1,0 +1,35 @@
+<!-- The picture used on guide/diagrams.md — a local image resolved against the
+     page it is written on. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200"
+     font-family="-apple-system, Segoe UI, sans-serif" font-size="14">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+            orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#673ab7" />
+    </marker>
+  </defs>
+
+  <g fill="#ede7f6" stroke="#673ab7" stroke-width="2">
+    <rect x="12" y="66" width="130" height="56" rx="8" />
+    <rect x="196" y="66" width="130" height="56" rx="8" />
+    <rect x="380" y="66" width="130" height="56" rx="8" />
+    <rect x="12" y="10" width="130" height="40" rx="8" fill="#fff8e1" stroke="#ffb300" />
+  </g>
+
+  <g fill="#311b92" text-anchor="middle">
+    <text x="77" y="99">Collector</text>
+    <text x="261" y="99">Windows</text>
+    <text x="445" y="99">Report</text>
+    <text x="77" y="35" fill="#e65100">events.jsonl</text>
+  </g>
+
+  <g stroke="#673ab7" stroke-width="2" marker-end="url(#arrow)" fill="none">
+    <path d="M77 52v10" />
+    <path d="M146 94h44" />
+    <path d="M330 94h44" />
+    <path d="M514 94h60" />
+  </g>
+
+  <text x="580" y="99" fill="#311b92">HTML</text>
+  <text x="261" y="150" text-anchor="middle" fill="#5e35b1">p50 · p95 · count</text>
+</svg>

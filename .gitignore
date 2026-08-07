@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.vsix
+.DS_Store
+
+# Temporary directory of scripts/fetch-material-assets.mjs
+.asset-tmp/
+
+# Local tooling configuration, not part of the project
+.claude/
+
+# Downloaded VS Code and its profile for the integration tests
+.vscode-test/
+
+# Coverage reports of the unit suite
+coverage/

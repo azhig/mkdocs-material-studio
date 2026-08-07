@@ -1,0 +1,54 @@
+name: Release
+
+# Triggered by a version tag: `git tag v0.1.0 && git push origin v0.1.0`.
+# The job builds the package, attaches it to a GitHub release, and publishes to
+# the Marketplace only if the VSCE_PAT secret is present — so the workflow is
+# useful even before you have a publisher account.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify
+        run: npm run check
+
+      - name: Check that the tag matches the version in package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $pkg" >&2
+            exit 1
+          fi
+
+      - name: Package
+        run: npm run vsix
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.vsix"
+          generate_release_notes: true
+
+      - name: Publish to the Marketplace
+        if: ${{ secrets.VSCE_PAT != '' }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --no-dependencies --packagePath *.vsix

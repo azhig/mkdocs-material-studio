@@ -1,0 +1,2353 @@
+/* Styles for the visual editor: toolbar, islands, popups, tables. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--md-default-bg-color, #fff);
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+}
+
+/* ---------- Toolbar ---------- */
+#vt {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 8px;
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-panel-border, #8883);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  color: var(--vscode-foreground);
+}
+#vt .sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 4px;
+  background: var(--vscode-panel-border, #8883);
+}
+#vt button,
+#vt select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+#vt button:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+#vt button.on {
+  background: var(--vscode-toolbar-activeBackground, #8883);
+  border-color: var(--vscode-focusBorder, #888);
+}
+#vt button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+#vt select {
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border-color: var(--vscode-dropdown-border, transparent);
+  width: 120px;
+}
+/* ---------- Block dropdown buttons: paragraph style and list ---------- */
+/* Style button: sign + name of the current style + chevron (as in office editors). */
+#vt button.vt-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 150px;
+  padding: 0 6px 0 8px;
+  justify-content: flex-start;
+  border-color: var(--vscode-dropdown-border, #8883);
+  background: var(--vscode-dropdown-background, transparent);
+}
+#vt button.vt-style .vt-style-ico {
+  flex: 0 0 auto;
+  min-width: 18px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+#vt button.vt-style .vt-style-name {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+#vt button.vt-style .codicon {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* List: the left half applies the current type, the right one is a chevron for picking the type. */
+#vt .vt-split {
+  display: inline-flex;
+  align-items: center;
+}
+#vt .vt-split > button {
+  border-radius: 0;
+  min-width: 30px;
+  padding: 0 6px;
+}
+#vt .vt-split > button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+#vt .vt-split > button.vt-split-caret {
+  border-radius: 0 4px 4px 0;
+  min-width: 20px;
+  padding: 0 3px;
+  margin-left: -1px;
+}
+#vt .vt-split > button.vt-split-caret .codicon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+/* The list type under the caret is active — the whole group is highlighted. */
+#vt .vt-split.on > button {
+  background: var(--vscode-toolbar-activeBackground, #8883);
+  border-color: var(--vscode-focusBorder, #888);
+}
+#vt .vt-split.on > button:first-child {
+  color: var(--md-accent-fg-color, #526cfe);
+}
+
+#vt .grow {
+  flex: 1;
+}
+#vt #vstatus {
+  opacity: 0.55;
+  font-size: 11px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+#vt button .codicon {
+  font-size: 16px;
+  vertical-align: middle;
+}
+#vt button b,
+#vt button i,
+#vt button s {
+  font-size: 14px;
+}
+
+/* ---------- Document canvas ---------- */
+/* Wrapper for the canvas and the right-hand table of contents: the group is
+   centered; the canvas stretches up to max-width, and the table of contents (when
+   enabled) is a fixed column on the right. */
+#vbody {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+#doc {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  max-width: 56rem;
+  min-width: 0;
+  padding: 1.2rem 1.6rem 40vh;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  outline: none;
+  caret-color: var(--md-accent-fg-color, #526cfe);
+}
+/* “Full width” mode — toggled by a toolbar button. */
+body.vwide #doc {
+  max-width: none;
+}
+#doc:focus {
+  outline: none;
+}
+
+/* Site header and the left-hand pages panel — toggled by toolbar buttons. The
+   markup and the general look are defined in site-chrome.css; here we only place
+   them within the editor layout. */
+#vhead {
+  display: none;
+}
+body.vhead #vhead {
+  display: block;
+}
+#vnav {
+  display: none;
+  flex: 0 0 15rem;
+  align-self: flex-start;
+  position: sticky;
+  top: 46px;
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
+  padding: 0 0.2rem 2rem;
+}
+body.vnav #vnav {
+  display: block;
+}
+
+/* Right-hand table of contents (TOC) built from the document headings. */
+#vtoc {
+  display: none;
+  flex: 0 0 15rem;
+  align-self: flex-start;
+  position: sticky;
+  top: 46px;
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
+  margin: 1.2rem 0.8rem 0 0.4rem;
+  padding: 0 0.4rem 2rem;
+  border-left: 1px solid var(--vscode-panel-border, #8883);
+  font-family: var(--vscode-font-family);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+body.vtoc #vtoc {
+  display: block;
+}
+.vtoc-head {
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  letter-spacing: 0.05em;
+  padding: 0 6px 6px 12px;
+}
+.vtoc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  opacity: 0.82;
+  padding: 3px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vtoc-item:hover {
+  background: var(--vscode-list-hoverBackground);
+  opacity: 1;
+}
+.vtoc-l1 {
+  padding-left: 10px;
+  font-weight: 600;
+}
+.vtoc-l2 {
+  padding-left: 20px;
+}
+.vtoc-l3 {
+  padding-left: 32px;
+}
+.vtoc-l4 {
+  padding-left: 44px;
+}
+.vtoc-l5 {
+  padding-left: 56px;
+}
+.vtoc-l6 {
+  padding-left: 68px;
+}
+.vtoc-empty {
+  opacity: 0.5;
+  padding: 4px 12px;
+}
+/* The section currently on screen (scrollspy, as in Material): accent color and a
+   bar at the left edge of the panel. The bar is drawn with ::before rather than a
+   border: a border would shift the item's text by a pixel every time the active
+   section changes. */
+.vtoc-item {
+  position: relative;
+  transition:
+    color 0.12s,
+    opacity 0.12s;
+}
+.vtoc-item.on {
+  color: var(--md-accent-fg-color, #526cfe);
+  opacity: 1;
+  font-weight: 600;
+}
+.vtoc-item.on::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--md-accent-fg-color, #526cfe);
+}
+/* Text inside islands stays selectable — the code can be copied. */
+
+/* Highlighting of the current block — a thin bar on the left. */
+/* Focus is marked with a data attribute rather than a class: Material applies its
+   styles only to table:not([class]) — a class on the table would break its look. */
+/* The bar lives on ::after: on an empty draft paragraph ::before is taken by the
+   placeholder (see below), and a shared pseudo-element would squeeze its text down
+   to the width of the bar (3px, one letter per line). */
+/* The active block is the one that currently carries the “⋮⋮” handle: a thin bar
+   on the left. Not a border around the block: on a nested paragraph a border reads
+   as an input field and competes with the border of the admonition itself. The bar,
+   on the other hand, works the same at any nesting depth and matches the height of
+   the handle. */
+#doc [data-vactive] {
+  position: relative;
+}
+#doc [data-vactive]::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--md-accent-fg-color, #526cfe);
+  opacity: 0.55;
+}
+/* A top-level block has more room on the left — the bar moves out into the margin. */
+#doc > [data-vactive]::after {
+  left: -12px;
+}
+
+/* ---------- Islands (code, mermaid, block formulas, tabs) ---------- */
+/* All block actions live in the menu of the “⋮⋮” handle on the left (see #vhandle). */
+.visland {
+  position: relative;
+}
+
+/* Marker for “this block can only be edited as text”. */
+.vnoedit {
+  opacity: 0.92;
+}
+
+/* ---------- Live code/formula editor ---------- */
+.vlive {
+  margin: 0.5em 0;
+  border: 1px solid var(--vscode-focusBorder, #888);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+}
+.vlive .vlive-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: var(--vscode-editorWidget-background);
+  border-bottom: 1px solid var(--vscode-widget-border, #8884);
+  color: var(--vscode-foreground);
+}
+.vlive .vlive-bar .grow {
+  flex: 1;
+  opacity: 0.6;
+}
+.vlive textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 7em;
+  border: none;
+  outline: none;
+  resize: vertical;
+  padding: 8px 10px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 13px);
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  tab-size: 4;
+}
+.vlive button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 10px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+.vlive button.secondary {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+/* ---------- Inline code block editor ---------- */
+/* A code block is edited in place: `<code>` and `.filename` are contenteditable,
+   and every line is a `.cl` block (for line numbers and line highlighting). */
+.vcode {
+  position: relative;
+}
+.vcode:focus-within {
+  outline: 2px solid var(--vscode-focusBorder, #007fd4);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* The #doc prefix gives priority over fallback.css `.highlight.linenums code>span`. */
+#doc .vcode > pre {
+  overflow-x: auto;
+}
+#doc .vcode > pre > code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  white-space: pre;
+  tab-size: 4;
+  caret-color: var(--vscode-editorCursor-foreground, var(--vscode-foreground));
+}
+#doc .vcode > pre > code > .cl {
+  display: block;
+  width: auto;
+  min-height: 1.25em;
+  counter-increment: none;
+}
+#doc .vcode > pre > code > .cl::before {
+  content: none;
+}
+#doc .vcode > pre > code > .cl.hll {
+  display: block;
+  width: auto;
+  background: var(--md-code-hl-color--light, rgba(255, 235, 59, 0.18));
+  box-shadow:
+    -0.7em 0 0 var(--md-code-hl-color--light, rgba(255, 235, 59, 0.18)),
+    0.7em 0 0 var(--md-code-hl-color--light, rgba(255, 235, 59, 0.18));
+}
+/* Line numbers: a sticky gutter at the start of every line (only with .linenums). */
+#doc .vcode.linenums > pre > code {
+  counter-reset: cl;
+}
+#doc .vcode.linenums > pre > code > .cl {
+  counter-increment: cl;
+}
+#doc .vcode.linenums > pre > code > .cl::before {
+  content: counter(cl);
+  display: inline-block;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 2.2em;
+  margin-right: 1em;
+  padding-right: 0.7em;
+  text-align: right;
+  user-select: none;
+  color: var(--vscode-editorLineNumber-foreground, #858585);
+  background: var(--vscode-editor-background, #1e1e1e);
+  border-right: 1px solid var(--vscode-widget-border, #8883);
+}
+/* The title is edited inline. */
+.vcode > .filename {
+  outline: none;
+  cursor: text;
+}
+.vcode > .filename:focus {
+  box-shadow: inset 0 0 0 1px var(--vscode-focusBorder, #007fd4);
+  border-radius: 3px;
+}
+/* “Highlight lines” mode: clicking a line marks it. */
+.vcode.vcode-hlmode > pre > code {
+  cursor: pointer;
+}
+.vcode.vcode-hlmode .cl:hover {
+  background: var(--md-code-hl-color--light, rgba(255, 235, 59, 0.28));
+}
+.vhl-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  font-size: 12px;
+  z-index: 80;
+}
+.vhl-bar span {
+  opacity: 0.8;
+}
+.vhl-bar button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 10px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+.vhl-bar button.secondary {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+/* ---------- Code block language picker ---------- */
+.vcode-langpop {
+  padding: 6px;
+  width: 220px;
+}
+.vcode-langsearch {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 6px 9px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, #8884));
+}
+.vcode-langsearch:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder, #007fd4);
+}
+.vcode-langlist {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.vcode-langlist button.active {
+  background: var(--vscode-list-activeSelectionBackground, var(--md-accent-fg-color, #0a64c2));
+  color: var(--vscode-list-activeSelectionForeground, #fff);
+}
+
+/* ---------- Popups (link, image, formula, table menu, slash) ---------- */
+.vpop {
+  position: absolute;
+  z-index: 60;
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px #0004;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  padding: 8px;
+}
+.vpop form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 260px;
+}
+.vpop label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  opacity: 0.9;
+}
+.vpop label.vcheck {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.vpop label.vcheck input {
+  flex: 0 0 auto;
+  margin: 0;
+}
+/* The language list stays in the flow (it pushes the form downwards instead of
+   overlapping the fields). opacity:1 — otherwise the shared .vpop label{opacity:.9}
+   would make the list semi-transparent. */
+.vpop label.vcombo {
+  opacity: 1;
+}
+.vpop .vcombo-list {
+  min-width: 0;
+  max-height: 148px;
+  overflow-y: auto;
+  margin-top: 2px;
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background);
+}
+/* A suggestion row: the value on the left, the page title / heading text on the
+   right, dimmed — the value is what goes into the field. */
+.vpop .vcombo-list button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.vpop .vcombo-list button > span:first-child {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vpop .vcombo-list button .hint {
+  flex: 1 1 auto;
+  text-align: right;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vpop input[type="text"] {
+  font: inherit;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, #8884));
+}
+.vpop textarea {
+  font: inherit;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, #8884));
+  resize: vertical;
+  min-height: 3.4em;
+  max-width: 340px;
+  min-width: 260px;
+}
+.vpop .vpop-title {
+  font-weight: 600;
+  font-size: 12px;
+}
+.vpop .vpop-help {
+  font-size: 10.5px;
+  opacity: 0.65;
+  max-width: 280px;
+  line-height: 1.35;
+}
+.vpop .row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+.vpop .row .grow {
+  flex: 1;
+}
+.vpop button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+.vpop button.secondary {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+.vpop button.danger {
+  background: var(--vscode-inputValidation-errorBorder, #b33);
+  color: #fff;
+}
+
+/* Highlight marker color palette. */
+.vpop.mark-palette {
+  display: flex;
+  gap: 5px;
+  padding: 7px;
+  align-items: center;
+}
+.vpop.mark-palette .swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid var(--vscode-widget-border, #8886);
+  cursor: pointer;
+}
+.vpop.mark-palette .swatch:hover {
+  outline: 2px solid var(--vscode-focusBorder, #888);
+  outline-offset: 1px;
+}
+.vpop.mark-palette .swatch.clear {
+  background: transparent;
+  color: var(--vscode-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+/* ---------- The keys popup: the record button ---------- */
+.vpop .vkeys-record {
+  width: 100%;
+  padding: 6px;
+}
+.vpop .vkeys-record.capturing {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+/* Icons and key sets are clickable — a click opens their editor. */
+#doc [data-emoji],
+#doc span.keys[data-keys] {
+  cursor: pointer;
+}
+
+/* ---------- The image popup: path, description, size, alignment ---------- */
+.vpop.vimg .vimg-src {
+  display: flex;
+  gap: 4px;
+}
+.vpop.vimg .vimg-src input {
+  flex: 1;
+  min-width: 0;
+}
+.vpop.vimg .vimg-src button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.vpop.vimg .vimg-row {
+  display: flex;
+  gap: 8px;
+}
+.vpop.vimg .vimg-row label {
+  flex: 1;
+  min-width: 0;
+}
+.vpop.vimg select {
+  font: inherit;
+  padding: 3px 4px;
+  border-radius: 4px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, #8884));
+}
+.vpop.vimg .vimg-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 140px;
+  padding: 4px;
+  border-radius: 4px;
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--vscode-widget-border, #8884);
+}
+/* No path yet, or the file did not load — the box would only be an empty frame. */
+.vpop.vimg .vimg-preview.empty {
+  display: none;
+}
+.vpop.vimg .vimg-preview img {
+  max-width: 100%;
+  max-height: 132px;
+  object-fit: contain;
+}
+
+/* An image is clickable — a click opens its form. Emoji and icons are images
+   too, but they are edited by their own picker. */
+#doc img {
+  cursor: pointer;
+}
+#doc [data-emoji] img {
+  cursor: inherit;
+}
+
+/* ---------- The formula popup: the LaTeX field with a live preview ---------- */
+.vpop.vmath textarea {
+  font-family: var(--vscode-editor-font-family, monospace);
+  min-height: 2.6em;
+}
+.vpop .vmath-preview {
+  min-height: 2.4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+  padding: 6px 8px;
+  border-radius: 4px;
+  /* The formula is drawn in the palette of the document, not of the VS Code theme. */
+  color: var(--md-default-fg-color, #000);
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--vscode-widget-border, #8884);
+}
+.vpop .vmath-preview.stale {
+  opacity: 0.4;
+}
+.vpop .vmath-err {
+  color: var(--vscode-errorForeground, #f14c4c);
+  font-size: 10.5px;
+  line-height: 1.35;
+  max-width: 300px;
+}
+.vpop .vmath-err:empty {
+  display: none;
+}
+
+/* An inline formula is clickable — a click opens its editor. */
+#doc span.arithmatex[data-tex] {
+  cursor: pointer;
+}
+
+/* ---------- The Mermaid dialog: code on the left, live preview on the right ---------- */
+.vmodal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: #0006;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vmodal-box {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 92vw);
+  height: min(560px, 84vh);
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px #0006;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  overflow: hidden;
+}
+.vmodal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vscode-widget-border, #8884);
+}
+.vmodal-bar .grow {
+  flex: 1;
+  font-weight: 600;
+}
+.vmodal-bar select {
+  font: inherit;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, #8884));
+}
+.vmodal-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.vmodal-body textarea {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: none;
+  border-right: 1px solid var(--vscode-widget-border, #8884);
+  outline: none;
+  resize: none;
+  padding: 10px 12px;
+  white-space: pre;
+}
+.vmodal-preview {
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The diagram is drawn in the palette of the document, not of the VS Code theme. */
+  background: var(--md-default-bg-color, #fff);
+}
+.vmodal-preview.stale {
+  opacity: 0.4;
+}
+.vmodal-preview svg {
+  max-width: 100%;
+}
+.vmodal-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--vscode-widget-border, #8884);
+}
+.vmodal-err {
+  color: var(--vscode-errorForeground, #f14c4c);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vmodal-err.grow {
+  flex: 1;
+}
+.vmodal-foot button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+.vmodal-foot button.secondary {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+/* Footnote markers and abbreviations are clickable — the popup edits them. */
+#doc sup.footnote-ref[data-fn-label] {
+  cursor: pointer;
+}
+#doc abbr[title] {
+  cursor: pointer;
+  text-decoration-style: dotted;
+}
+
+/* Highlight marker colors (samples; the real colors live in the site's extra.css). */
+#doc mark.hl-yellow,
+.md-typeset mark.hl-yellow {
+  background: #fff3a0;
+  color: #000;
+}
+#doc mark.hl-green,
+.md-typeset mark.hl-green {
+  background: #c3f0c8;
+  color: #000;
+}
+#doc mark.hl-blue,
+.md-typeset mark.hl-blue {
+  background: #bfe3ff;
+  color: #000;
+}
+#doc mark.hl-pink,
+.md-typeset mark.hl-pink {
+  background: #ffc9de;
+  color: #000;
+}
+#doc mark.hl-orange,
+.md-typeset mark.hl-orange {
+  background: #ffd8a8;
+  color: #000;
+}
+#doc mark.hl-purple,
+.md-typeset mark.hl-purple {
+  background: #e0c8ff;
+  color: #000;
+}
+
+/* Action chip above a link. */
+.vpop.chip {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+.vpop.chip .url {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+  padding: 4px 6px;
+}
+
+/* Table menu: icons only, the explanations live in the instant tooltip. */
+.vpop.table-menu {
+  display: flex;
+  gap: 3px;
+  padding: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.vpop.table-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 32px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.vpop.table-menu button:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+.vpop.table-menu button svg {
+  display: block;
+}
+.vpop.table-menu button .codicon {
+  font-size: 17px;
+}
+.vpop.table-menu .sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 3px;
+  background: var(--vscode-panel-border, #8883);
+}
+
+/* Formatting bubble menu above the selection. position: fixed — viewport
+   coordinates (so it follows the selection while scrolling). */
+.vbubble {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-radius: 7px;
+  box-shadow: 0 4px 16px #0005;
+  font-family: var(--vscode-font-family);
+}
+.vbubble button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+.vbubble button:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+.vbubble button.on {
+  background: var(--vscode-toolbar-activeBackground, #8883);
+  color: var(--vscode-focusBorder, inherit);
+}
+.vbubble button .codicon {
+  font-size: 16px;
+}
+
+/* Wrapper for the inline toolbar buttons: display:contents — does not affect the
+   flex layout; in “selection only” mode (body.vfmt-selection) it hides entirely. */
+.vt-inline {
+  display: contents;
+}
+body.vfmt-selection .vt-inline {
+  display: none;
+}
+
+/* Component quick buttons pinned to the toolbar (Material icon). */
+.vt-pinned {
+  display: contents;
+}
+#vt .vt-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#vt .vt-pin .vmenu-ico {
+  width: 17px;
+  height: 17px;
+  opacity: 0.9;
+}
+
+/* Empty “+ Insert” menu (every component has been moved to the toolbar). */
+.vmenu-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+/* ---------- “Editor settings” popup ---------- */
+.vpop.editor-settings {
+  min-width: 344px;
+  max-width: 384px;
+  padding: 0;
+  overflow: hidden;
+}
+.editor-settings .es-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 11px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid var(--vscode-widget-border, #8883);
+}
+.editor-settings .es-header .codicon {
+  font-size: 15px;
+  opacity: 0.75;
+}
+.editor-settings .es-section {
+  padding: 12px 14px;
+}
+.editor-settings .es-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.editor-settings .es-sub {
+  font-size: 11px;
+  opacity: 0.6;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.editor-settings .es-divider {
+  height: 1px;
+  background: var(--vscode-widget-border, #8883);
+}
+.editor-settings .es-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 288px;
+  overflow-y: auto;
+  margin: 0 -8px;
+  padding: 0 8px;
+}
+.editor-settings .es-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 7px;
+}
+.editor-settings .es-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.editor-settings .es-row .vmenu-ico {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+.editor-settings .es-name {
+  flex: 1;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Navigating to the keyboard shortcuts screen and the “back” button in its header. */
+.editor-settings .es-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-top: 1px solid var(--vscode-widget-border, #8883);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.editor-settings .es-nav:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.editor-settings .es-nav .codicon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+.editor-settings .es-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: -2px 0 -2px -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.editor-settings .es-back:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+
+/* “Keyboard shortcuts” screen: groups, the shortcut button, capture mode. */
+.editor-settings .es-keys-sub {
+  padding: 10px 14px 4px;
+  margin: 0;
+}
+.editor-settings .es-notice {
+  color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
+  opacity: 0.9;
+}
+.editor-settings .es-keys {
+  max-height: 320px;
+  margin: 0;
+  padding: 4px 10px 10px;
+}
+.editor-settings .es-group {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.55;
+  padding: 10px 8px 3px;
+}
+/* The background/border is repeated here: the global `.vpop button` (0,1,1) beats
+   `.vkbd` (0,1,0) and would paint the shortcut buttons like ordinary blue ones. */
+.editor-settings .es-key-btn {
+  margin-left: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 74px;
+  text-align: center;
+  background: var(--vscode-keybindingLabel-background, #8080801f);
+  color: var(--vscode-keybindingLabel-foreground, inherit);
+  border: 1px solid var(--vscode-keybindingLabel-border, #80808033);
+  border-bottom-color: var(--vscode-keybindingLabel-bottomBorder, #80808047);
+}
+.editor-settings .es-key-btn:hover {
+  opacity: 1;
+  border-color: var(--md-accent-fg-color, #526cfe);
+}
+.editor-settings .es-key-off {
+  opacity: 0.45;
+  font-style: italic;
+}
+.editor-settings .es-key-custom {
+  border-color: var(--md-accent-fg-color, #526cfe);
+  opacity: 1;
+}
+.editor-settings .es-key-btn.capturing {
+  opacity: 1;
+  min-width: 120px;
+  border-color: var(--md-accent-fg-color, #526cfe);
+  background: var(--vscode-list-activeSelectionBackground, #526cfe33);
+}
+.editor-settings .es-reset {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 0 10px 12px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--vscode-widget-border, #8884);
+  background: transparent;
+  color: inherit;
+}
+.editor-settings .es-reset:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+.editor-settings .es-reset:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Segmented control — a “pill” with the active option highlighted. */
+.vseg {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  background: var(--vscode-editor-background, #0000000d);
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-radius: 8px;
+}
+.vseg .vseg-opt {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 2px 11px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition:
+    background 0.13s ease,
+    color 0.13s ease;
+}
+.vseg .vseg-opt:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+.vseg .vseg-opt.on {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  box-shadow: 0 1px 2px #0002;
+}
+.vseg.es-wide {
+  display: flex;
+  width: 100%;
+}
+.vseg.es-wide .vseg-opt {
+  flex: 1;
+  text-align: center;
+}
+
+/* ---------- Icon and emoji picker ---------- */
+.vpop.icon-picker {
+  width: 376px;
+  padding: 10px;
+}
+.icon-picker .ip-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 6px 9px;
+  border-radius: 7px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-widget-border, #8884));
+  margin-bottom: 9px;
+}
+.icon-picker .ip-search:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder, #8888);
+}
+.icon-picker .ip-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 9px;
+  flex-wrap: wrap;
+}
+.icon-picker .ip-tab {
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--vscode-widget-border, #8884);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+.icon-picker .ip-tab:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+.icon-picker .ip-tab.on {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: var(--vscode-button-background);
+}
+.icon-picker .ip-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 264px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.icon-picker .ip-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 7px;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.1s ease;
+}
+.icon-picker .ip-cell:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8883);
+}
+.icon-picker .ip-ico {
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.icon-picker .ip-note {
+  font-size: 11px;
+  opacity: 0.55;
+  margin-top: 9px;
+  text-align: center;
+}
+
+/* A “live” inline glyph from the picker — an svg mask over currentColor (before the host render). */
+.viemoji-live {
+  display: inline-block;
+  width: 1.125em;
+  height: 1.125em;
+  vertical-align: -0.2em;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Admonition settings: type and collapsibility. */
+.vpop.adm-settings {
+  min-width: 250px;
+  padding: 6px 8px 8px;
+}
+.vpop.adm-settings .cat {
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  padding: 6px 2px 4px;
+  letter-spacing: 0.05em;
+}
+.adm-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+/* Every button is painted in the color of its type (--t): icon, border and a light
+   fill — the way a real Material admonition looks. */
+.adm-types .adm-type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  padding: 5px 7px;
+  border-radius: 4px;
+  color: var(--vscode-foreground);
+  border: 1px solid color-mix(in srgb, var(--t, #888) 55%, transparent);
+  background: color-mix(in srgb, var(--t, #888) 10%, transparent);
+}
+.adm-types .adm-type:hover {
+  background: color-mix(in srgb, var(--t, #888) 20%, transparent);
+}
+.adm-types .adm-type.sel {
+  border-color: var(--t, var(--vscode-focusBorder, #888));
+  background: color-mix(in srgb, var(--t, #888) 26%, transparent);
+  box-shadow: inset 0 0 0 1px var(--t, var(--vscode-focusBorder, #888));
+}
+.adm-type .adm-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The type icon — the same SVG mask Material draws, tinted with the type color. */
+.adm-type .adm-ico {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  background-color: var(--t, currentColor);
+}
+.adm-type.adm-note {
+  --t: #448aff;
+}
+.adm-type.adm-note .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--note);
+  mask-image: var(--md-admonition-icon--note);
+}
+.adm-type.adm-abstract {
+  --t: #00b0ff;
+}
+.adm-type.adm-abstract .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--abstract);
+  mask-image: var(--md-admonition-icon--abstract);
+}
+.adm-type.adm-info {
+  --t: #00b8d4;
+}
+.adm-type.adm-info .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--info);
+  mask-image: var(--md-admonition-icon--info);
+}
+.adm-type.adm-tip {
+  --t: #00bfa5;
+}
+.adm-type.adm-tip .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--tip);
+  mask-image: var(--md-admonition-icon--tip);
+}
+.adm-type.adm-success {
+  --t: #00c853;
+}
+.adm-type.adm-success .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--success);
+  mask-image: var(--md-admonition-icon--success);
+}
+.adm-type.adm-question {
+  --t: #64dd17;
+}
+.adm-type.adm-question .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--question);
+  mask-image: var(--md-admonition-icon--question);
+}
+.adm-type.adm-warning {
+  --t: #ff9100;
+}
+.adm-type.adm-warning .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--warning);
+  mask-image: var(--md-admonition-icon--warning);
+}
+.adm-type.adm-failure {
+  --t: #ff5252;
+}
+.adm-type.adm-failure .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--failure);
+  mask-image: var(--md-admonition-icon--failure);
+}
+.adm-type.adm-danger {
+  --t: #ff1744;
+}
+.adm-type.adm-danger .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--danger);
+  mask-image: var(--md-admonition-icon--danger);
+}
+.adm-type.adm-bug {
+  --t: #f50057;
+}
+.adm-type.adm-bug .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--bug);
+  mask-image: var(--md-admonition-icon--bug);
+}
+.adm-type.adm-example {
+  --t: #7c4dff;
+}
+.adm-type.adm-example .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--example);
+  mask-image: var(--md-admonition-icon--example);
+}
+.adm-type.adm-quote {
+  --t: #9e9e9e;
+}
+.adm-type.adm-quote .adm-ico {
+  -webkit-mask-image: var(--md-admonition-icon--quote);
+  mask-image: var(--md-admonition-icon--quote);
+}
+.adm-collapse {
+  display: flex;
+  gap: 4px;
+}
+.adm-collapse .adm-col {
+  flex: 1;
+  font: inherit;
+  cursor: pointer;
+  padding: 5px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-widget-border, #8884);
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+}
+.adm-collapse .adm-col:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.adm-collapse .adm-col.sel {
+  border-color: var(--vscode-focusBorder, #888);
+  background: var(--vscode-list-activeSelectionBackground, #0a63c944);
+}
+
+/* Admonition insertion picker: the confirm button at the bottom. */
+.adm-insert-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.adm-insert-ok {
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 14px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+.adm-insert-ok:hover {
+  background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}
+
+/* ---------- Annotations: the “plus” marker + the popup ---------- */
+/* The list of explanations is hidden — the content is shown by clicking the marker. */
+#doc ol.annotation-list {
+  display: none;
+}
+/* The annotation editor: #doc itself moves into this window, so everything
+   the toolbar can do applies inside as-is. The veil's z-index sits below the
+   toolbar (40) and the popups (60+), so both keep working above it. The depth
+   offsets (top/left/z-index) are set inline by openAnnotationModal. */
+.vsub-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #0006;
+}
+.vsub-box {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 92vw);
+  max-height: 74vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--md-default-fg-color--lightest, #0002);
+  background: var(--md-default-bg-color, #fff);
+  box-shadow: 0 16px 56px #0006;
+}
+.vsub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest, #0002);
+}
+.vsub-title {
+  margin-right: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-accent-fg-color, #526cfe);
+}
+.vsub-head button {
+  border: 1px solid var(--md-default-fg-color--lightest, #0002);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.62rem;
+  cursor: pointer;
+  color: var(--md-default-fg-color, #000d);
+  background: transparent;
+}
+.vsub-head button:hover {
+  background: var(--md-default-fg-color--lightest, #0001);
+}
+.vsub-head button.vsub-done {
+  border-color: transparent;
+  color: var(--md-primary-bg-color, #fff);
+  background: var(--md-accent-fg-color, #526cfe);
+}
+.vsub-head button.vsub-done:hover {
+  filter: brightness(1.1);
+}
+.vsub-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+/* Inside the window the editor fills it edge to edge; the tall bottom padding
+   that gives the page its typing room would waste the whole box. */
+.vsub-body #doc {
+  max-width: none;
+  padding: 0.8rem 1.4rem 6rem;
+}
+/* A nested list stays hidden inside its parent's window (its marker opens its
+   own editor on top, like on the published site) — and inside the marker tips,
+   where the clone's markers open stacked tips instead. */
+.vannotip-body ol.annotation-list {
+  display: none;
+}
+/* The block handle has nowhere sensible to sit over a fixed, internally
+   scrolled window. */
+body.vsub-modal #vhandle {
+  display: none;
+}
+/* Tip bodies hold cloned markers — they live outside #doc but must look the same. */
+#doc .md-annotation,
+.vannotip-body .md-annotation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* strictly square → circle: reset min-width/padding coming from fallback.css */
+  width: 1.2em;
+  height: 1.2em;
+  min-width: 0;
+  padding: 0;
+  margin: 0 0.15em;
+  vertical-align: baseline;
+  border-radius: 50%;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  background: var(--md-accent-fg-color, #526cfe);
+  color: #fff;
+  font-size: inherit;
+  line-height: 1;
+  box-shadow: 0 1px 3px #0004;
+}
+#doc .md-annotation::before,
+.vannotip-body .md-annotation::before {
+  content: "+";
+  font-size: 0.9em;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+#doc .md-annotation:hover,
+.vannotip-body .md-annotation:hover {
+  filter: brightness(1.12);
+}
+#doc .md-annotation.on::before,
+.vannotip-body .md-annotation.on::before {
+  transform: rotate(45deg);
+} /* «+» → «×» */
+
+/* Do NOT override position — the base `.vpop` is already absolute and serves as the
+   containing block for the absolutely positioned `.vannotip-actions` icons (relative
+   would break the popover itself: it would drift to the bottom of the document). */
+.vpop.vannotip {
+  padding: 0;
+  max-width: 340px;
+}
+.vannotip-body {
+  padding: 9px 54px 10px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-height: 260px;
+  overflow: auto;
+}
+.vannotip-body > *:first-child {
+  margin-top: 0;
+}
+.vannotip-body > *:last-child {
+  margin-bottom: 0;
+}
+.vannotip-body code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  background: var(--vscode-textCodeBlock-background, #8881);
+  padding: 0 0.3em;
+  border-radius: 3px;
+}
+/* Compact action icons in the top-right corner of the tooltip. */
+.vannotip-actions {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+}
+.vannotip-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground, #8a8a8a);
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+}
+.vannotip-actions button svg {
+  display: block;
+}
+.vannotip-actions button:hover {
+  background: var(--vscode-toolbar-hoverBackground, #ffffff1a);
+  color: var(--vscode-foreground);
+}
+.vannotip-actions button.vannotip-del:hover {
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d33);
+  color: var(--vscode-errorForeground, #f14c4c);
+}
+
+/* Slash menu and the component insertion menu. */
+.vmenu {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: auto;
+  min-width: 240px;
+  padding: 4px;
+}
+.vmenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+.vmenu button:hover,
+.vmenu button.sel {
+  background: var(--vscode-list-hoverBackground);
+}
+.vmenu .codicon {
+  font-size: 14px;
+  opacity: 0.8;
+}
+.vmenu .cat {
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.5;
+  padding: 6px 8px 2px;
+  letter-spacing: 0.05em;
+}
+
+/* “+Block” component palette: rows of “Material icon + name (+ hint)”. */
+.vmenu-icons {
+  min-width: 244px;
+}
+.vmenu-icons button {
+  gap: 10px;
+  padding: 6px 10px;
+}
+.vmenu-ico {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+.vmenu-ico svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+.vmenu-ico.is-mask {
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.vmenu-icons button:hover .vmenu-ico {
+  opacity: 1;
+}
+.vmenu-name {
+  flex: 0 0 auto;
+}
+.vmenu-hint {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 11px;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+/* Command menu (paragraph style, list type): sign + name + keyboard shortcut.
+   The active item is blue, an unavailable one (indent where there is nowhere to
+   indent) is dimmed. */
+.vmenu-cmd {
+  min-width: 268px;
+}
+.vmenu-cmd .vmenu-cmd-item {
+  gap: 10px;
+  padding: 6px 10px;
+}
+.vmenu-cmd .vmenu-sign {
+  flex: 0 0 auto;
+  width: 20px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+.vmenu-cmd .vmenu-cmd-item.on {
+  color: var(--md-accent-fg-color, #526cfe);
+}
+.vmenu-cmd .vmenu-cmd-item.on .vmenu-sign {
+  opacity: 1;
+}
+.vmenu-cmd .vmenu-cmd-item.on {
+  background: var(--vscode-list-activeSelectionBackground, #526cfe1a);
+}
+.vmenu-cmd .vmenu-cmd-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.vmenu-cmd .vmenu-cmd-item:disabled:hover {
+  background: transparent;
+}
+.vmenu-key {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+  white-space: nowrap;
+  background: var(--vscode-keybindingLabel-background, #8882);
+  color: var(--vscode-keybindingLabel-foreground, inherit);
+}
+
+/* Table size picker. */
+.vgrid {
+  display: grid;
+  grid-template-columns: repeat(8, 16px);
+  gap: 2px;
+  padding: 4px;
+}
+.vgrid span {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--vscode-widget-border, #8886);
+  border-radius: 2px;
+}
+.vgrid span.on {
+  background: var(--md-accent-fg-color, #526cfe);
+  border-color: transparent;
+}
+.vgrid-label {
+  text-align: center;
+  font-size: 11px;
+  opacity: 0.7;
+  padding-bottom: 4px;
+}
+
+/* Tab labels: a hint about editing them with a double click. */
+.tabbed-labels label {
+  cursor: pointer;
+}
+.tabbed-labels label[contenteditable="true"] {
+  outline: 1px dashed var(--vscode-focusBorder, #888);
+  cursor: text;
+}
+
+/* Inline editor controls: “×” on a label (delete the tab) and “+” at the end of the
+   row (add one). The buttons are not serialized (tabLabelTitle strips the ×). */
+.tabbed-labels .vtab-x,
+.tabbed-labels .vtab-add {
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  font-family: inherit;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity 0.1s,
+    background-color 0.1s,
+    color 0.1s;
+}
+.tabbed-labels .vtab-x {
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  font-size: 15px;
+  opacity: 0; /* the space is reserved — no jump on hover */
+}
+/* “×” is available while there is more than one tab (the last one is removed as the whole block). */
+.tabbed-labels:has(> label:nth-of-type(2)) label:hover .vtab-x {
+  opacity: 0.5;
+}
+.tabbed-labels:has(> label:nth-of-type(2)) .vtab-x:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, #0000001a);
+  color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+.tabbed-labels:not(:has(> label:nth-of-type(2))) .vtab-x {
+  display: none;
+}
+.tabbed-labels .vtab-add {
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  align-self: center;
+  border-radius: 4px;
+  font-size: 17px;
+  opacity: 0.5;
+}
+.tabbed-labels .vtab-add:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, #0000001a);
+}
+/* A draggable label: highlighted slightly, dimmed while being dragged. */
+.tabbed-labels > label[draggable="true"] {
+  cursor: grab;
+}
+.tabbed-labels > label.vtab-drag {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+/* The “Insert content tabs” form: title, list of rows, ordering handle. */
+.vpop-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.vtabrows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vtabrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vtabrow input {
+  flex: 1;
+  min-width: 0;
+}
+.vtabrow-grip {
+  flex: 0 0 auto;
+  cursor: grab;
+  user-select: none;
+  letter-spacing: -2px;
+  color: var(--vscode-descriptionForeground, #8888);
+  padding: 0 2px;
+}
+.vtabrow.vtabrow-drag {
+  opacity: 0.45;
+}
+.vtabrow-x {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--vscode-foreground);
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.vtabrow-x:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, #0000001a);
+  color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+.vtab-addrow {
+  align-self: flex-start;
+  margin: 8px 0 2px;
+  padding: 2px 4px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--vscode-textLink-foreground, #3794ff);
+}
+.vtab-addrow:hover {
+  text-decoration: underline;
+}
+
+/* Inline management of grid cards. A card = <li> inside the single <ul>; the .vgctl
+   buttons (contenteditable=false) never reach the Markdown. The `<ul>` is
+   display:contents, so both <li> and “+ Card” are grid cells, while the handle and
+   the “×” are positioned in the corners of the card. */
+.grid.cards > ul > li {
+  position: relative;
+}
+.vcard-grip,
+.vcard-x {
+  position: absolute;
+  top: 4px;
+  z-index: 2;
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  line-height: 1;
+  color: var(--vscode-foreground);
+  font-family: inherit;
+  transition:
+    opacity 0.1s,
+    background-color 0.1s,
+    color 0.1s;
+}
+.vcard-grip {
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: grab;
+  font-size: 13px;
+  user-select: none;
+  color: var(--vscode-descriptionForeground, #8888);
+}
+.vcard-x {
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+}
+.grid.cards > ul > li:hover .vcard-grip {
+  opacity: 0.6;
+}
+.grid.cards > ul > li:hover .vcard-x {
+  opacity: 0.55;
+}
+.vcard-x:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, #0000001a);
+  color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+.vcard-grip:hover {
+  opacity: 1 !important;
+}
+.grid.cards > ul > li.vcard-drag {
+  opacity: 0.4;
+}
+/* A single card — “×” is hidden (the last one is removed as the whole block). */
+.grid.cards > ul:not(:has(> li:nth-of-type(2))) .vcard-x {
+  display: none;
+}
+/* “+ Card” — a grid cell tile below the cards. */
+.vcard-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  border: 1px dashed var(--vscode-widget-border, #8886);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #8a8a8a);
+  transition:
+    border-color 0.1s,
+    color 0.1s,
+    background-color 0.1s;
+}
+.vcard-add:hover {
+  border-color: var(--md-accent-fg-color, #526cfe);
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, #0000000d);
+}
+
+/* Editor grid for tables. Material has no vertical borders, but while editing cell
+   by cell the structure is invisible without them — so we add separators, drawn with
+   THE SAME line Material uses between rows (solid, `.05rem`,
+   `--md-typeset-table-color`), not a dashed one. The colors come from the Material
+   variables rather than `--vscode-*`: the table must follow the document scheme —
+   otherwise in the dark theme the header got a light background from the VS Code
+   theme and the text on it disappeared. We do not set a header background at all:
+   Material has none. */
+#doc table:not([class]) th + th,
+#doc table:not([class]) td + td {
+  border-left: 0.05rem solid var(--md-typeset-table-color);
+}
+#doc table:not([class]) th,
+#doc table:not([class]) td {
+  min-width: 3.5em;
+}
+
+/* Block handle: appears to the left of the ACTIVE block (the one clicked or holding
+   the caret) — the single entry point to every block action and the drag handle. */
+#vhandle {
+  position: absolute;
+  z-index: 50;
+  width: 26px;
+  height: 26px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  border-radius: 5px;
+  color: var(--vscode-foreground, #3b3b3b);
+  opacity: 0.75;
+  background: var(--vscode-editorWidget-background, #f3f3f3);
+  border: 1px solid var(--vscode-widget-border, #8884);
+  font-size: 15px;
+  line-height: 1;
+  user-select: none;
+  box-shadow: 0 1px 3px #0002;
+  transition:
+    opacity 0.1s,
+    transform 0.1s;
+}
+#vhandle.show {
+  display: flex;
+}
+#vhandle:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, #e8e8e8));
+  border-color: var(--vscode-focusBorder, #888);
+}
+#vhandle:active {
+  cursor: grabbing;
+}
+
+/* Dragging a block: text selection is disabled (otherwise the selection would be
+   dragged), the source block is dimmed, the insertion point is shown as a line. */
+body.vdragging {
+  user-select: none;
+  cursor: grabbing;
+}
+body.vdragging #vhandle {
+  cursor: grabbing;
+}
+#doc .vdrag-src {
+  opacity: 0.4;
+}
+#vdrop {
+  position: absolute;
+  z-index: 55;
+  display: none;
+  height: 2px;
+  border-radius: 2px;
+  pointer-events: none;
+  background: var(--md-accent-fg-color, #526cfe);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-accent-fg-color, #526cfe) 30%, transparent);
+}
+#vdrop.show {
+  display: block;
+}
+#vdrop::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--md-accent-fg-color, #526cfe);
+}
+
+/* Block menu: one section per level (the block itself, then the containers around
+   it). The section header names the block the actions below it apply to. */
+.vpop.block-menu {
+  min-width: 252px;
+}
+.vmenu-sec {
+  padding: 7px 10px 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  opacity: 0.55;
+}
+/* Separator between levels — only before nested sections. */
+.vmenu-sec ~ .vmenu-sec {
+  border-top: 1px solid var(--vscode-widget-border, #8883);
+  margin-top: 4px;
+}
+.block-menu .adm-types {
+  padding: 0 8px;
+}
+.block-menu .adm-collapse {
+  padding: 4px 8px 2px;
+}
+
+/* “Block management” — the expanding button and its submenu. */
+.vpop .vmenu-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.75;
+}
+.vpop .vmenu-more.open {
+  opacity: 1;
+}
+.vmenu-more-caret {
+  opacity: 0.6;
+  font-size: 10px;
+}
+.vmenu-sub[hidden] {
+  display: none;
+}
+.vmenu-sub {
+  border-top: 1px solid var(--vscode-widget-border, #8883);
+}
+.vmenu-sub .vmenu {
+  padding-left: 6px;
+}
+
+/* Instant tooltip (the native title is slow and tiny). */
+#vtip {
+  position: absolute;
+  z-index: 90;
+  display: none;
+  max-width: 280px;
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: var(--vscode-editorHoverWidget-background, #2b2b2b);
+  color: var(--vscode-editorHoverWidget-foreground, #ffffff);
+  border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  box-shadow: 0 2px 10px #0005;
+}
+#vtip.show {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The shortcut inside a tooltip: ⌘⇧S on macOS, Ctrl+Shift+S elsewhere. */
+.vtip-key {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--vscode-keybindingLabel-background, #ffffff1f);
+  color: var(--vscode-keybindingLabel-foreground, inherit);
+  border: 1px solid var(--vscode-keybindingLabel-border, #ffffff24);
+  border-bottom-color: var(--vscode-keybindingLabel-bottomBorder, #ffffff33);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* The same badge in lists (the “+ Insert” menu, editor settings). */
+.vkbd {
+  flex: 0 0 auto;
+  margin-left: 10px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--vscode-keybindingLabel-background, #8080801f);
+  color: var(--vscode-keybindingLabel-foreground, inherit);
+  border: 1px solid var(--vscode-keybindingLabel-border, #80808033);
+  border-bottom-color: var(--vscode-keybindingLabel-bottomBorder, #80808047);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+.vkbd:empty {
+  border: 0;
+  background: none;
+}
+.vkbd-far {
+  margin-left: auto;
+}
+
+/* Placeholder of an empty draft paragraph (disappears once text is typed). */
+#doc > p[data-vph]:has(> br:only-child)::before {
+  content: attr(data-vph);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* “Block is not rendered yet” indicator (after an edit, before synchronization). */
+@keyframes vpulse {
+  0% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+.vsyncing::after {
+  animation: vpulse 1.2s infinite;
+}

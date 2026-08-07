@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest a capability or an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What you are trying to do and what gets in the way today. A description
+        of the task is more useful than a description of a solution — sometimes
+        there is a simpler way.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: How you see it
+      description: Optional — if you already have an idea of how it should work.
