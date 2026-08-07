@@ -1,0 +1,110 @@
+# A sample project for trying the extension by hand. Everything the extension
+# reads from a real project is here: both palettes, custom styles, a logo, a
+# repository link, tabs, a nav with sections — and pages that link to one
+# another the way MkDocs wants them written.
+#
+#   code samples/demo/docs/index.md      → “MkDocs: Open Preview”
+#
+# Running the site itself is optional and needs Python:
+#   pip install mkdocs-material && mkdocs serve -f samples/demo/mkdocs.yml
+
+site_name: Aurora Docs
+site_description: A sample MkDocs Material project for trying the extension out
+site_url: https://example.github.io/aurora/
+repo_url: https://github.com/example/aurora
+repo_name: example/aurora
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2026 Aurora
+
+theme:
+  name: material
+  language: en
+  icon:
+    logo: material/rocket-launch
+  favicon: assets/favicon.svg
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - content.footnote.tooltips
+    - content.tabs.link
+  # Two palettes with a toggle — the shape a real project uses. The preview does
+  # not follow the media query: it takes the VS Code theme and the colours of
+  # the scheme that matches it.
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# With navigation.tabs the top level of the nav becomes the tabs of the header.
+nav:
+  - Home: index.md
+  - Getting started:
+      - getting-started/installation.md
+      - getting-started/configuration.md
+  - Guide:
+      - guide/writing.md
+      - guide/diagrams.md
+      - Advanced:
+          - guide/advanced/annotations.md
+  - Reference:
+      - reference/api.md
+      - reference/faq.md
+  - Project site: https://example.com

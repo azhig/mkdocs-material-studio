@@ -1,0 +1,22 @@
+{
+  // The tests reach into both halves of the project: src/ (node + vscode) and
+  // webviews/ (DOM). vitest only transpiles, so without this project nothing
+  // ever type-checks them — a test could assert against a field that no longer
+  // exists and still pass.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "vscode"],
+    // A test may reasonably set something up and not read it back.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "paths": {
+      // The stand-in the tests run against, so the checker sees what they do.
+      "vscode": ["./test/mocks/vscode.ts"]
+    }
+  },
+  // test/integration is checked by tsconfig.integration.json instead: those
+  // tests drive the real editor and must not see the stand-in.
+  "exclude": ["node_modules", "dist", "test/integration"],
+  "include": ["test/**/*.ts", "src/types/*.d.ts"]
+}

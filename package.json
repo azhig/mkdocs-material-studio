@@ -1,0 +1,653 @@
+{
+  "name": "mkdocs-material-studio",
+  "displayName": "MkDocs Material Studio",
+  "description": "%extension.description%",
+  "version": "0.1.0",
+  "publisher": "azhig",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azhig/mkdocs-material-studio"
+  },
+  "bugs": {
+    "url": "https://github.com/azhig/mkdocs-material-studio/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=22"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "%capabilities.untrustedWorkspaces%"
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "%capabilities.virtualWorkspaces%"
+    }
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "mkdocs",
+    "material",
+    "markdown",
+    "preview",
+    "documentation"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:mkdocs.yml",
+    "workspaceContains:mkdocs.yaml",
+    "onLanguage:markdown"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mkdocsStudio.openPreview",
+        "title": "%command.openPreview%",
+        "category": "MkDocs",
+        "icon": "$(book)"
+      },
+      {
+        "command": "mkdocsStudio.openPreviewToSide",
+        "title": "%command.openPreviewToSide%",
+        "category": "MkDocs",
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "mkdocsStudio.showLogs",
+        "title": "%command.showLogs%",
+        "category": "MkDocs"
+      },
+      {
+        "command": "mkdocsStudio.tree.refresh",
+        "title": "%command.tree.refresh%",
+        "category": "MkDocs",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "mkdocsStudio.tree.newPage",
+        "title": "%command.tree.newPage%",
+        "category": "MkDocs",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "mkdocsStudio.tree.newSection",
+        "title": "%command.tree.newSection%",
+        "category": "MkDocs",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "mkdocsStudio.tree.rename",
+        "title": "%command.tree.rename%",
+        "category": "MkDocs"
+      },
+      {
+        "command": "mkdocsStudio.tree.delete",
+        "title": "%command.tree.delete%",
+        "category": "MkDocs"
+      },
+      {
+        "command": "mkdocsStudio.tree.openConfig",
+        "title": "%command.tree.openConfig%",
+        "category": "MkDocs"
+      },
+      {
+        "command": "mkdocsStudio.openConfigEditor",
+        "title": "%command.openConfigEditor%",
+        "category": "MkDocs",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "mkdocsStudio.insertComponent",
+        "title": "%command.insertComponent%",
+        "category": "MkDocs",
+        "icon": "$(add)"
+      },
+      {
+        "command": "mkdocsStudio.openVisualEditor",
+        "title": "%command.openVisualEditor%",
+        "category": "MkDocs",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "mkdocsStudio.openAsText",
+        "title": "%command.openAsText%",
+        "category": "MkDocs",
+        "icon": "$(go-to-file)"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "mkdocsStudio.visualEditor",
+        "displayName": "%customEditor.visualEditor%",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "mkdocsStudio.projectTree",
+          "name": "MkDocs",
+          "when": "mkdocsStudio.isProject"
+        }
+      ]
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mkdocsStudio.openPreview",
+          "when": "editorLangId == markdown && activeCustomEditorId != 'mkdocsStudio.visualEditor'",
+          "group": "navigation@1",
+          "alt": "mkdocsStudio.openPreviewToSide"
+        },
+        {
+          "command": "mkdocsStudio.openVisualEditor",
+          "when": "editorLangId == markdown && activeCustomEditorId != 'mkdocsStudio.visualEditor'",
+          "group": "navigation@2"
+        },
+        {
+          "command": "mkdocsStudio.openAsText",
+          "when": "activeCustomEditorId == 'mkdocsStudio.visualEditor'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "mkdocsStudio.insertComponent",
+          "when": "editorLangId == markdown",
+          "group": "1_mkdocs@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "mkdocsStudio.insertComponent",
+          "when": "editorLangId == markdown",
+          "group": "1_modification"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "mkdocsStudio.openVisualEditor",
+          "when": "resourceExtname == .md",
+          "group": "navigation@10"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mkdocsStudio.openAsText",
+          "when": "false"
+        },
+        {
+          "command": "mkdocsStudio.openPreview"
+        },
+        {
+          "command": "mkdocsStudio.openPreviewToSide"
+        },
+        {
+          "command": "mkdocsStudio.showLogs"
+        },
+        {
+          "command": "mkdocsStudio.insertComponent"
+        },
+        {
+          "command": "mkdocsStudio.openVisualEditor"
+        },
+        {
+          "command": "mkdocsStudio.openConfigEditor"
+        },
+        {
+          "command": "mkdocsStudio.tree.openConfig"
+        },
+        {
+          "command": "mkdocsStudio.tree.rename",
+          "when": "false"
+        },
+        {
+          "command": "mkdocsStudio.tree.delete",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "mkdocsStudio.tree.newPage",
+          "when": "view == mkdocsStudio.projectTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "mkdocsStudio.tree.newSection",
+          "when": "view == mkdocsStudio.projectTree",
+          "group": "navigation@2"
+        },
+        {
+          "command": "mkdocsStudio.openConfigEditor",
+          "when": "view == mkdocsStudio.projectTree",
+          "group": "navigation@3"
+        },
+        {
+          "command": "mkdocsStudio.tree.refresh",
+          "when": "view == mkdocsStudio.projectTree",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "mkdocsStudio.tree.newPage",
+          "when": "view == mkdocsStudio.projectTree && viewItem == section",
+          "group": "1_new@1"
+        },
+        {
+          "command": "mkdocsStudio.tree.newSection",
+          "when": "view == mkdocsStudio.projectTree && viewItem == section",
+          "group": "1_new@2"
+        },
+        {
+          "command": "mkdocsStudio.tree.rename",
+          "when": "view == mkdocsStudio.projectTree && (viewItem == section || viewItem == page)",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "mkdocsStudio.tree.delete",
+          "when": "view == mkdocsStudio.projectTree && (viewItem == section || viewItem == page || viewItem == loose)",
+          "group": "2_edit@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MkDocs Material Studio",
+      "properties": {
+        "mkdocsStudio.language": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "ru",
+            "de",
+            "es",
+            "fr",
+            "pt-br",
+            "zh-cn",
+            "ja"
+          ],
+          "enumDescriptions": [
+            "%config.language.enum.0%",
+            "English",
+            "English",
+            "Deutsch",
+            "Español",
+            "Français",
+            "Português (Brasil)",
+            "简体中文",
+            "日本語"
+          ],
+          "default": "auto",
+          "markdownDescription": "%config.language%"
+        },
+        "mkdocsStudio.showSiteHeader": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.showSiteHeader%"
+        },
+        "mkdocsStudio.showSiteNav": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.showSiteNav%"
+        },
+        "mkdocsStudio.showToc": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.showToc%"
+        },
+        "mkdocsStudio.pageBackground": {
+          "type": "string",
+          "enum": [
+            "material",
+            "editor"
+          ],
+          "enumDescriptions": [
+            "%config.pageBackground.enum.0%",
+            "%config.pageBackground.enum.1%"
+          ],
+          "default": "material",
+          "markdownDescription": "%config.pageBackground%"
+        },
+        "mkdocsStudio.palette.light.primary": {
+          "type": "string",
+          "enum": [
+            "",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange",
+            "brown",
+            "grey",
+            "blue grey",
+            "black",
+            "white"
+          ],
+          "enumDescriptions": [
+            "%config.palette.enum.unset%",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange",
+            "brown",
+            "grey",
+            "blue grey",
+            "black",
+            "white"
+          ],
+          "default": "",
+          "markdownDescription": "%config.palette.light.primary%"
+        },
+        "mkdocsStudio.palette.light.accent": {
+          "type": "string",
+          "enum": [
+            "",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange"
+          ],
+          "enumDescriptions": [
+            "%config.palette.enum.unset%",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange"
+          ],
+          "default": "",
+          "markdownDescription": "%config.palette.light.accent%"
+        },
+        "mkdocsStudio.palette.dark.primary": {
+          "type": "string",
+          "enum": [
+            "",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange",
+            "brown",
+            "grey",
+            "blue grey",
+            "black",
+            "white"
+          ],
+          "enumDescriptions": [
+            "%config.palette.enum.unset%",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange",
+            "brown",
+            "grey",
+            "blue grey",
+            "black",
+            "white"
+          ],
+          "default": "",
+          "markdownDescription": "%config.palette.dark.primary%"
+        },
+        "mkdocsStudio.palette.dark.accent": {
+          "type": "string",
+          "enum": [
+            "",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange"
+          ],
+          "enumDescriptions": [
+            "%config.palette.enum.unset%",
+            "red",
+            "pink",
+            "purple",
+            "deep purple",
+            "indigo",
+            "blue",
+            "light blue",
+            "cyan",
+            "teal",
+            "green",
+            "light green",
+            "lime",
+            "yellow",
+            "amber",
+            "orange",
+            "deep orange"
+          ],
+          "default": "",
+          "markdownDescription": "%config.palette.dark.accent%"
+        },
+        "mkdocsStudio.followActiveEditor": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%config.followActiveEditor%"
+        },
+        "mkdocsStudio.scrollSync": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%config.scrollSync%"
+        },
+        "mkdocsStudio.imagePasteFolder": {
+          "type": "string",
+          "default": "assets",
+          "markdownDescription": "%config.imagePasteFolder%"
+        },
+        "mkdocsStudio.inlineFormatting": {
+          "type": "string",
+          "enum": [
+            "selection",
+            "both",
+            "toolbar"
+          ],
+          "enumDescriptions": [
+            "%config.inlineFormatting.enum.0%",
+            "%config.inlineFormatting.enum.1%",
+            "%config.inlineFormatting.enum.2%"
+          ],
+          "default": "both",
+          "markdownDescription": "%config.inlineFormatting%"
+        },
+        "mkdocsStudio.toolbarButtons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "table",
+              "image",
+              "code",
+              "hr",
+              "admonition",
+              "tabs",
+              "icon",
+              "grid",
+              "diagram",
+              "button",
+              "annotation",
+              "footnote",
+              "tooltip",
+              "math"
+            ]
+          },
+          "default": [
+            "table",
+            "image",
+            "code",
+            "hr"
+          ],
+          "markdownDescription": "%config.toolbarButtons%"
+        },
+        "mkdocsStudio.keybindings": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "markdownDescription": "%config.keybindings%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "node esbuild.mjs --production",
+    "compile": "tsc --noEmit -p tsconfig.ext.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.integration.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "node esbuild.mjs --tests && vscode-test",
+    "check": "npm run compile && npm run lint && npm run format:check && npm run test:unit",
+    "vsix": "npm run package && vsce package --no-dependencies",
+    "icon": "node scripts/build-icon.mjs",
+    "demo": "node scripts/record-demo.mjs",
+    "harness": "node scripts/harness/server.mjs",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "shots": "node scripts/shoot-screenshots.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/katex": "^0.16.8",
+    "@types/markdown-it": "^14.1.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "1.90.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vscode/codicons": "^0.0.45",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.13.0",
+    "happy-dom": "^20.11.1",
+    "mocha": "^11.8.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.11.0",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "katex": "^0.18.1",
+    "markdown-it": "^14.3.0",
+    "markdown-it-anchor": "^9.2.1",
+    "markdown-it-attrs": "^5.0.0",
+    "markdown-it-deflist": "^3.0.1",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-mark": "^4.0.0",
+    "markdown-it-sub": "^2.0.0",
+    "markdown-it-sup": "^2.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "mermaid": "^11.16.1",
+    "yaml": "^2.9.0"
+  },
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#3949ab",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/azhig/mkdocs-material-studio#readme",
+  "qna": false,
+  "overrides": {
+    "dompurify": "^3.4.13",
+    "serialize-javascript": "^7.0.5",
+    "diff": "^8.0.3"
+  }
+}

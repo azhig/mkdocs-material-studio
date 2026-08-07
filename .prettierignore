@@ -1,0 +1,30 @@
+node_modules/
+dist/
+*.vsix
+
+# The VS Code copy the integration tests run in.
+.vscode-test/
+
+# Tooling state (agent worktrees carry their own builds).
+.claude/
+
+# Third-party assets: Material CSS, icons, KaTeX and codicon files are vendored
+# as they come from upstream — reformatting them would only create noise.
+assets/material-css/
+assets/icons/
+assets/vendor/
+
+# Translation bundles: generated and compared key by key, formatting is fixed.
+assets/i18n/
+package.nls*.json
+
+# Test fixtures rely on exact byte layout.
+samples/
+
+# Coverage reports: generated, and the HTML is not ours to format.
+coverage/
+
+# A page to try the editor on: the language and formatting checks read every
+# file that is not ignored, so a scratch reproduction goes here rather than in
+# the working tree, where it would turn the suite red.
+scratch/

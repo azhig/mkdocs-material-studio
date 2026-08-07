@@ -1,0 +1,27 @@
+<!-- Source of the Marketplace icon. assets/icon.png is generated from it: run
+     `npm run icon`.
+
+     The mark is `material/library` from the Material Design icon set that ships
+     with mkdocs-material (assets/icons/svg/material/library.svg, see
+     THIRD_PARTY_NOTICES.md) — the very icon the theme puts in the header of its
+     own demo site. The tile is Material indigo (#3f51b5), the theme's default
+     primary colour. The logo of Material for MkDocs itself is deliberately NOT
+     used: this extension is not an official one, and its icon must not pass for
+     the project's own mark.
+
+     A SQUARE tile, no rounding. The rasterizer draws on a white sheet, so any
+     rounding used to leave four white wedges around the corners — the brightest
+     thing in the extensions list of a dark theme. The build script now recovers
+     the alpha channel, but the square keeps the icon safe from any renderer.
+
+     width/height are 512 on purpose: the renderer that produces the PNG draws the
+     file at its own size, and a 128-sized source would land in the corner of the
+     canvas. The coordinate system stays 128×128 through viewBox. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#3f51b5"/>
+
+  <!-- 24×24 icon scaled to 80×80 and centred: 24 px of air on every side. -->
+  <g transform="translate(24 24) scale(3.3333)" fill="#ffffff">
+    <path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/>
+  </g>
+</svg>

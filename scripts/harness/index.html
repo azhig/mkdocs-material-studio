@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MkDocs Material Studio — visual editor harness</title>
+    <!-- The base styles VS Code injects into EVERY webview first. Without them the
+     harness lied: a blockquote looked fine here while in a real webview it got a
+     dark slab from --vscode-textBlockQuote-background. -->
+    <style>
+      body {
+        color: var(--vscode-editor-foreground);
+        font-family: var(--vscode-font-family);
+        padding: 0 20px;
+      }
+      a,
+      a code {
+        color: var(--vscode-textLink-foreground);
+      }
+      code {
+        color: var(--vscode-textPreformat-foreground);
+        background-color: var(--vscode-textPreformat-background);
+      }
+      blockquote {
+        background: var(--vscode-textBlockQuote-background);
+        border-color: var(--vscode-textBlockQuote-border);
+      }
+      kbd {
+        color: var(--vscode-editor-foreground);
+      }
+    </style>
+    <link rel="stylesheet" href="/assets/material-css/main.css" />
+    <link rel="stylesheet" href="/assets/material-css/palette.css" />
+    <link rel="stylesheet" href="/assets/vendor/katex/katex.min.css" />
+    <link rel="stylesheet" href="/assets/vendor/codicons/codicon.css" />
+    <link rel="stylesheet" href="/assets/fallback.css" />
+    <link rel="stylesheet" href="/assets/site-chrome.css" />
+    <link rel="stylesheet" href="/assets/visual.css" />
+    <style>
+      /* VS Code theme variables (light) — in a webview VS Code provides them itself,
+     here we set them by hand, otherwise popup and button backgrounds are transparent. */
+      :root {
+        --vscode-font-family: -apple-system, "Segoe UI", sans-serif;
+        --vscode-editor-font-family: "SF Mono", Menlo, Consolas, monospace;
+        --vscode-editor-font-size: 13px;
+        --vscode-editor-background: #ffffff;
+        --vscode-foreground: #3b3b3b;
+        --vscode-editor-foreground: #3b3b3b;
+        --vscode-textLink-foreground: #005fb8;
+        --vscode-textPreformat-foreground: #a31515;
+        --vscode-textPreformat-background: #0000000a;
+        --vscode-textBlockQuote-background: #7f7f7f1a;
+        --vscode-textBlockQuote-border: #007acc80;
+        --vscode-editorWidget-background: #f8f8f8;
+        --vscode-widget-border: #d4d4d4;
+        --vscode-panel-border: #d4d4d4;
+        --vscode-input-foreground: #3b3b3b;
+        --vscode-input-background: #ffffff;
+        --vscode-input-border: #cecece;
+        --vscode-button-foreground: #ffffff;
+        --vscode-button-background: #0078d4;
+        --vscode-button-secondaryForeground: #3b3b3b;
+        --vscode-button-secondaryBackground: #e5e5e5;
+        --vscode-dropdown-background: #ffffff;
+        --vscode-dropdown-foreground: #3b3b3b;
+        --vscode-dropdown-border: #cecece;
+        --vscode-list-hoverBackground: #e8e8e8;
+        --vscode-toolbar-hoverBackground: #e8e8e8;
+        --vscode-toolbar-activeBackground: #dddddd;
+        --vscode-focusBorder: #0078d4;
+        --vscode-notifications-background: #f8f8f8;
+        --vscode-notifications-border: #d4d4d4;
+        --vscode-inputValidation-errorBorder: #be1100;
+      }
+
+      /* VS Code dark theme — in a webview the variables come from VS Code itself; here
+     we set them by hand so that the theme button (or the vscode-dark class) gives a
+     truthful dark preview of the toolbar as well as of the content. */
+      body.vscode-dark {
+        --vscode-editor-background: #1e1e1e;
+        --vscode-foreground: #cccccc;
+        --vscode-editor-foreground: #cccccc;
+        --vscode-textLink-foreground: #4daafc;
+        --vscode-textPreformat-foreground: #d7ba7d;
+        --vscode-textPreformat-background: #ffffff1a;
+        /* Opaque dark — as in popular dark themes; this is exactly what produced the
+       black blockquote slab on top of a light page. */
+        --vscode-textBlockQuote-background: #21222c;
+        --vscode-textBlockQuote-border: #4daafc80;
+        --vscode-editorWidget-background: #252526;
+        --vscode-widget-border: #454545;
+        --vscode-panel-border: #2b2b2b;
+        --vscode-input-foreground: #cccccc;
+        --vscode-input-background: #3c3c3c;
+        --vscode-input-border: #3c3c3c;
+        --vscode-button-foreground: #ffffff;
+        --vscode-button-background: #0e639c;
+        --vscode-button-secondaryForeground: #cccccc;
+        --vscode-button-secondaryBackground: #3a3d41;
+        --vscode-dropdown-background: #3c3c3c;
+        --vscode-dropdown-foreground: #f0f0f0;
+        --vscode-dropdown-border: #3c3c3c;
+        --vscode-list-hoverBackground: #2a2d2e;
+        --vscode-toolbar-hoverBackground: #ffffff1a;
+        --vscode-toolbar-activeBackground: #ffffff29;
+        --vscode-focusBorder: #007fd4;
+        --vscode-notifications-background: #252526;
+        --vscode-notifications-border: #454545;
+        --vscode-inputValidation-errorBorder: #be1100;
+      }
+
+      /* Harness debug panel. */
+      #hpanel {
+        border-top: 2px solid #888;
+        margin-top: 3rem;
+        padding: 1rem;
+        font: 12px/1.5 monospace;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        background: #f6f6f6;
+      }
+      #hpanel h3 {
+        margin: 0 0 0.5rem;
+        font: bold 12px sans-serif;
+      }
+      #hdoc,
+      #hlog {
+        white-space: pre-wrap;
+        overflow: auto;
+        max-height: 300px;
+        margin: 0;
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 0.5rem;
+      }
+    </style>
+  </head>
+  <body class="md-typeset vscode-light">
+    <div id="vt">
+      <button id="tbStyle" class="vt-style" title="Paragraph style">
+        <span class="vt-style-ico">T</span><span class="vt-style-name">Normal text</span
+        ><span class="codicon codicon-chevron-down"></span>
+      </button>
+      <span class="vt-inline">
+        <div class="sep"></div>
+        <button id="tbBold" data-tip="Bold"><b>B</b></button>
+        <button id="tbItalic" data-tip="Italic"><i>I</i></button>
+        <button id="tbUnder" data-tip="Underline"><u>U</u></button>
+        <button id="tbStrike" data-tip="Strikethrough"><s>S</s></button>
+        <button id="tbCode" data-tip="Code"><span class="codicon codicon-code"></span></button>
+        <button id="tbMark" data-tip="Highlight">==</button>
+        <button id="tbLink" data-tip="Link"><span class="codicon codicon-link"></span></button>
+        <button id="tbClear" data-tip="Clear formatting">
+          <span class="codicon codicon-clear-all"></span>
+        </button>
+      </span>
+      <div class="sep"></div>
+      <span class="vt-split" id="vtList">
+        <button id="tbList" title="Bulleted list">
+          <span class="codicon codicon-list-unordered"></span>
+        </button>
+        <button id="tbListMenu" class="vt-split-caret" title="List type">
+          <span class="codicon codicon-chevron-down"></span>
+        </button>
+      </span>
+      <div class="sep"></div>
+      <span id="vtPinned" class="vt-pinned"></span>
+      <button id="tbComponent" title="Insert a Material component (block or inline)">
+        <span class="codicon codicon-add"></span>
+      </button>
+      <div class="sep"></div>
+      <button id="tbUndo" title="Undo"><span class="codicon codicon-discard"></span></button>
+      <button id="tbRedo" title="Redo"><span class="codicon codicon-redo"></span></button>
+      <div class="grow"></div>
+      <span id="vstatus">Loading…</span>
+      <button id="tbSettings" title="Editor settings">
+        <span class="codicon codicon-settings-gear"></span>
+      </button>
+      <button id="tbTheme" title="Theme: light / dark">
+        <span class="codicon codicon-color-mode"></span>
+      </button>
+      <button id="tbWidth" title="Page width: normal / full width">
+        <span class="codicon codicon-screen-full"></span>
+      </button>
+      <button id="tbSiteHead" title="Site header (show/hide)">
+        <span class="codicon codicon-layout-menubar"></span>
+      </button>
+      <button id="tbSiteNav" title="Site pages on the left (show/hide)">
+        <span class="codicon codicon-layout-sidebar-left"></span>
+      </button>
+      <button id="tbToc" title="Table of contents (show/hide)">
+        <span class="codicon codicon-list-tree"></span>
+      </button>
+      <button id="tbAsText" title="Open as text">
+        <span class="codicon codicon-go-to-file"></span>
+      </button>
+    </div>
+    <header id="vhead" class="mv-head"></header>
+    <div id="vbody">
+      <aside id="vnav" class="mv-nav" aria-label="Site navigation"></aside>
+      <div id="doc" contenteditable="true" spellcheck="false"></div>
+      <aside id="vtoc" aria-label="Table of contents"></aside>
+    </div>
+
+    <div id="hpanel">
+      <div>
+        <h3>Document (in the “file”)</h3>
+        <pre id="hdoc"></pre>
+      </div>
+      <div>
+        <h3>Edit log</h3>
+        <pre id="hlog"></pre>
+      </div>
+    </div>
+
+    <script>
+      window.__visual = {
+        mermaidUri: "/dist/webview/mermaid.js",
+        katexUri: "/dist/webview/katex.js",
+        nonce: "",
+      };
+    </script>
+    <script>
+      // Localization check: ?lang=ru (de, es, fr, pt-br, zh-cn, ja) loads that bundle
+      // the way the extension injects it into the page shell. A synchronous request is
+      // fine here — the bundle must be in place before visual.js reads window.__i18n.
+      (function () {
+        const lang = new URLSearchParams(location.search).get("lang");
+        if (!lang || lang === "en") return;
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", "/assets/i18n/" + lang + ".json", false);
+          xhr.send();
+          if (xhr.status === 200) {
+            window.__i18n = { lang: lang, strings: JSON.parse(xhr.responseText) };
+            document.documentElement.lang = lang;
+          }
+        } catch (e) {
+          console.warn("harness: bundle for " + lang + " not loaded", e);
+        }
+      })();
+    </script>
+    <script src="/dist/webview/harness.js"></script>
+    <script src="/dist/webview/visual.js"></script>
+    <!-- The scripted walk-through for the README recording. Idle unless ?frame= is given. -->
+    <script src="/scripts/harness/demo.js"></script>
+  </body>
+</html>

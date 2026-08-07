@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MkDocs Material Studio — preview harness</title>
+    <!-- The base styles VS Code injects into EVERY webview first: without them the
+     harness would not show the dark blockquote slab from --vscode-textBlockQuote-*. -->
+    <style>
+      body {
+        color: var(--vscode-editor-foreground);
+        font-family: var(--vscode-font-family);
+        padding: 0 20px;
+      }
+      a,
+      a code {
+        color: var(--vscode-textLink-foreground);
+      }
+      code {
+        color: var(--vscode-textPreformat-foreground);
+        background-color: var(--vscode-textPreformat-background);
+      }
+      blockquote {
+        background: var(--vscode-textBlockQuote-background);
+        border-color: var(--vscode-textBlockQuote-border);
+      }
+      kbd {
+        color: var(--vscode-editor-foreground);
+      }
+    </style>
+    <link rel="stylesheet" href="/assets/material-css/main.css" />
+    <link rel="stylesheet" href="/assets/material-css/palette.css" />
+    <link rel="stylesheet" href="/assets/vendor/katex/katex.min.css" />
+    <link rel="stylesheet" href="/assets/fallback.css" />
+    <link rel="stylesheet" href="/assets/site-chrome.css" />
+    <link rel="stylesheet" href="/assets/vendor/codicons/codicon.css" />
+    <style>
+      /* VS Code theme variables — in a webview VS Code provides them itself. */
+      :root {
+        --vscode-font-family: -apple-system, "Segoe UI", sans-serif;
+        --vscode-editor-font-family: "SF Mono", Menlo, Consolas, monospace;
+        --vscode-editor-background: #ffffff;
+        --vscode-foreground: #3b3b3b;
+        --vscode-panel-border: #d4d4d4;
+        --vscode-button-foreground: #ffffff;
+        --vscode-button-background: #0078d4;
+        --vscode-button-secondaryForeground: #3b3b3b;
+        --vscode-button-secondaryBackground: #e5e5e5;
+        --vscode-button-secondaryHoverBackground: #cccccc;
+        --vscode-textCodeBlock-background: #f3f3f3;
+        --vscode-errorForeground: #f14c4c;
+        --vscode-editor-foreground: #3b3b3b;
+        --vscode-textLink-foreground: #005fb8;
+        --vscode-textPreformat-foreground: #a31515;
+        --vscode-textPreformat-background: #0000000a;
+        --vscode-textBlockQuote-background: #7f7f7f1a;
+        --vscode-textBlockQuote-border: #007acc80;
+      }
+      /* A dark VS Code theme with a light page scheme — the combination that produced
+     the black blockquote slab in the first place. */
+      body.vscode-dark {
+        --vscode-editor-background: #1e1e1e;
+        --vscode-foreground: #cccccc;
+        --vscode-editor-foreground: #cccccc;
+        --vscode-textLink-foreground: #4daafc;
+        --vscode-textPreformat-foreground: #d7ba7d;
+        --vscode-textPreformat-background: #ffffff1a;
+        --vscode-textBlockQuote-background: #21222c;
+        --vscode-textBlockQuote-border: #4daafc80;
+      }
+      /* Below is a copy of the shell styles from src/preview/previewPanel.ts. */
+      #toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 12px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        background: var(--vscode-editor-background);
+        color: var(--vscode-foreground);
+        font-family: var(--vscode-font-family);
+      }
+      #toolbar .grow {
+        flex: 1;
+        opacity: 0.7;
+      }
+      #toolbar button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font: inherit;
+        cursor: pointer;
+        color: var(--vscode-foreground);
+        background: transparent;
+        border: none;
+        padding: 0.2rem 0.35rem;
+        border-radius: 4px;
+      }
+      #toolbar button .codicon {
+        font-size: 16px;
+      }
+      #toolbar button:hover {
+        background: var(
+          --vscode-toolbar-hoverBackground,
+          var(--vscode-button-secondaryHoverBackground)
+        );
+      }
+      #toolbar button.on {
+        color: var(--vscode-button-foreground);
+        background: var(--vscode-button-background);
+      }
+      #toolbar button:disabled {
+        opacity: 0.4;
+        cursor: default;
+        background: transparent;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      #stage {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+      }
+      #siteHead {
+        display: none;
+        flex: 0 0 auto;
+      }
+      body.mv-show-head #siteHead {
+        display: block;
+      }
+      #pane {
+        display: flex;
+        height: 100%;
+      }
+      #siteNav {
+        display: none;
+        flex: 0 0 15rem;
+        height: 100%;
+        overflow: auto;
+      }
+      body.mv-show-nav #siteNav {
+        display: block;
+      }
+      #pageToc {
+        display: none;
+        flex: 0 0 14rem;
+        height: 100%;
+        overflow: auto;
+      }
+      body.mv-show-toc #pageToc {
+        display: block;
+      }
+      #content {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        overflow: auto;
+      }
+      #overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+        background: var(--vscode-editor-background);
+        color: var(--vscode-foreground);
+        font-family: var(--vscode-font-family);
+      }
+      #overlay.show {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Kept in step with the toolbar in src/preview/previewPanel.ts by hand:
+         the extension builds that one through t(), this one is plain HTML. A
+         button added there and forgotten here makes the harness lie. -->
+    <div id="toolbar">
+      <span id="modeLabel" class="grow">MkDocs</span>
+      <button id="btnConfig" title="Site settings — mkdocs.yml">
+        <span class="codicon codicon-settings-gear"></span>
+      </button>
+      <button id="btnHead" title="Site header, as on the MkDocs site">
+        <span class="codicon codicon-layout-menubar"></span>
+      </button>
+      <button id="btnNav" title="List of site pages">
+        <span class="codicon codicon-layout-sidebar-left"></span>
+      </button>
+      <button id="btnToc" title="Headings of this page">
+        <span class="codicon codicon-list-tree"></span>
+      </button>
+      <button id="btnTheme" title="Theme: light / dark">
+        <span class="codicon codicon-color-mode"></span>
+      </button>
+    </div>
+    <header id="siteHead" class="mv-head"></header>
+    <div id="stage">
+      <div id="pane" style="display: none">
+        <aside id="siteNav" class="mv-nav" aria-label="Site navigation"></aside>
+        <div id="content" class="md-typeset"></div>
+        <aside id="pageToc" class="mv-toc" aria-label="On this page"></aside>
+      </div>
+      <div id="overlay" class="show"><div class="box">Initializing…</div></div>
+    </div>
+
+    <script>
+      // Localization check: ?lang=ru (de, es, fr, pt-br, zh-cn, ja) loads that bundle
+      // the way the extension injects it into the page shell. Note that the toolbar
+      // buttons here are static HTML — in the real shell they go through t(), so this
+      // only exercises the strings rendered by the webview itself.
+      (function () {
+        const lang = new URLSearchParams(location.search).get("lang");
+        if (!lang || lang === "en") return;
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", "/assets/i18n/" + lang + ".json", false);
+          xhr.send();
+          if (xhr.status === 200) {
+            window.__i18n = { lang: lang, strings: JSON.parse(xhr.responseText) };
+            document.documentElement.lang = lang;
+          }
+        } catch (e) {
+          console.warn("harness: bundle for " + lang + " not loaded", e);
+        }
+      })();
+    </script>
+
+    <script>
+      // Extension emulation: the same message protocol as PreviewPanelManager.
+      window.__mkdocsPreview = { mermaidUri: "/dist/webview/mermaid.js", nonce: "" };
+      const chrome = { header: false, nav: false, toc: false };
+      let active = "reference/response.md";
+      const data = {
+        siteName: "Demo documentation",
+        repoUrl: "https://github.com/example/demo",
+        repoName: "example/demo",
+        tabs: true,
+        nav: [
+          { kind: "page", title: "Home", path: "index.md" },
+          {
+            kind: "section",
+            title: "Tutorial",
+            children: [
+              { kind: "page", title: "First steps", path: "tutorial/first-steps.md" },
+              { kind: "page", title: "Path parameters", path: "tutorial/path-params.md" },
+            ],
+          },
+          {
+            kind: "section",
+            title: "Reference",
+            children: [
+              { kind: "page", title: "FastAPI class", path: "reference/fastapi.md" },
+              { kind: "page", title: "Response class", path: "reference/response.md" },
+            ],
+          },
+        ],
+      };
+      const html = `<h1 id="p" data-src-line="0">Demo page</h1>
+      <p data-src-line="2">A paragraph for checking scrolling and layout.</p>
+      <p data-src-line="3">Links: <a href="reference/response.md">another page</a>,
+      <a href="#s2">a section of this one</a>,
+      <a href="https://example.com">a site</a>.</p>
+      ${Array.from({ length: 5 }, (_, s) => {
+        const base = s * 10 + 4;
+        return (
+          `<h2 id="s${s}" data-src-line="${base}">Section ${s + 1}</h2>` +
+          `<h3 id="s${s}a" data-src-line="${base + 1}">Details ${s + 1}.1</h3>` +
+          Array.from(
+            { length: 6 },
+            (_, i) => `<p data-src-line="${base + 2 + i}">Line ${i + 1}</p>`,
+          ).join("\n") +
+          `<h3 id="s${s}b" data-src-line="${base + 8}">Details ${s + 1}.2</h3>` +
+          `<p data-src-line="${base + 9}">Another paragraph.</p>`
+        );
+      }).join("\n")}`;
+      const toWebview = (msg) => window.postMessage(msg, "*");
+      let vsState = {};
+      window.acquireVsCodeApi = () => ({
+        getState: () => vsState,
+        setState: (s) => {
+          vsState = s;
+        },
+        postMessage(msg) {
+          setTimeout(() => {
+            if (msg.type === "ready") {
+              toWebview({ type: "chromeState", ...chrome });
+              toWebview({ type: "overlay", kind: "none" });
+              // docId — as in the real provider: the webview uses it to decide whether
+              // to keep the scroll position on a redraw.
+              toWebview({
+                type: "render",
+                html,
+                docId: "file:///demo.md",
+                palette: {
+                  light: { primary: "indigo", accent: "pink" },
+                  dark: { primary: "amber", accent: "lime" },
+                },
+                // mkdocsStudio.pageBackground — “material” by default; “editor”
+                // is checked by flipping data-vs-bg by hand in the console.
+                background: "material",
+              });
+              toWebview({ type: "siteChrome", data });
+              toWebview({ type: "siteActive", active });
+            } else if (msg.type === "setChrome") {
+              if (typeof msg.header === "boolean") chrome.header = msg.header;
+              if (typeof msg.nav === "boolean") chrome.nav = msg.nav;
+              if (typeof msg.toc === "boolean") chrome.toc = msg.toc;
+              toWebview({ type: "chromeState", ...chrome });
+            } else if (msg.type === "openPage") {
+              active = msg.path;
+              toWebview({ type: "siteActive", active });
+            } else if (msg.type === "openDocLink") {
+              // The extension resolves the href against the file system; here we
+              // only record it — the point of the harness is that the click gets out.
+              window.__lastDocLink = msg.href;
+            } else if (msg.type === "blockClick") {
+              // Opening a block is bound to a double click — the counter makes it
+              // visible that a single click sends nothing.
+              window.__blockClicks = (window.__blockClicks ?? 0) + 1;
+              window.__lastBlockClick = msg;
+            }
+          }, 0);
+        },
+      });
+    </script>
+    <script src="/dist/webview/preview.js"></script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question about MkDocs Material itself
+    url: https://squidfunk.github.io/mkdocs-material/
+    about: Questions about the theme and its syntax are better answered by its own documentation.

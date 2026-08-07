@@ -1,0 +1,60 @@
+/* The project's own styles (extra_css in mkdocs.yml).
+ *
+ * Everything here is deliberately loud: if the file is not picked up, the page
+ * looks plainly different — no lettered caption above the headings, no slab on
+ * the front page, no zebra in the tables. That is the point of a sample. */
+
+:root {
+  --aurora-slab: #f3efff;
+  --aurora-rule: rgba(103, 58, 183, 0.2);
+}
+
+[data-md-color-scheme="slate"] {
+  --aurora-slab: #2a2440;
+  --aurora-rule: rgba(255, 255, 255, 0.12);
+}
+
+/* The slab on the front page. The background is referenced with a relative
+ * url() — resolved against this file, the way a real project writes it. */
+.md-typeset .aurora-hero {
+  margin: 1.2rem 0;
+  padding: 1rem 1.2rem;
+  border-left: 4px solid var(--md-accent-fg-color);
+  border-radius: 0.2rem;
+  background-color: var(--aurora-slab);
+  background-image: url("../assets/grid.svg");
+  background-repeat: repeat;
+}
+
+.md-typeset .aurora-hero > :last-child {
+  margin-bottom: 0;
+}
+
+/* A rule under every h2, plus a caption drawn out of nothing but CSS: the
+ * quickest way to see that the stylesheet arrived. */
+.md-typeset h2 {
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid var(--md-accent-fg-color);
+}
+
+.md-typeset h2::before {
+  content: "Aurora";
+  display: block;
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--md-accent-fg-color);
+}
+
+/* Tables get a zebra of their own. */
+.md-typeset table:not([class]) tbody tr:nth-child(odd) {
+  background-color: var(--aurora-rule);
+}
+
+/* A quote reads as a quote, not as an indent. */
+.md-typeset blockquote {
+  border-left-width: 4px;
+  border-left-color: var(--md-accent-fg-color);
+  font-style: italic;
+}

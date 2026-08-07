@@ -1,0 +1,27 @@
+version: 2
+
+# The extension ships what it bundles, so an advisory against a runtime
+# dependency is an advisory against the extension. Grouped updates keep this
+# from turning into a pull request per package every week.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      runtime:
+        dependency-type: production
+      dev:
+        dependency-type: development
+        # A major bump of a test runner or a bundler is a change of behaviour,
+        # not a refresh — it deserves its own pull request to read.
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

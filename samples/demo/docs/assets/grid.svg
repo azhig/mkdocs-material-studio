@@ -1,0 +1,5 @@
+<!-- A tile for the slab background: referenced from stylesheets/extra.css with
+     a relative url(), so it also checks that those get rewritten. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <path d="M24 0H0v24" fill="none" stroke="rgba(103,58,183,0.16)" stroke-width="1" />
+</svg>

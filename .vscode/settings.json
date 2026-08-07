@@ -1,0 +1,13 @@
+{
+  // Formatting and linting for contributors: the repository ships Prettier and
+  // ESLint configs, so the editor should use them rather than personal defaults.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "typescript.tsdk": "node_modules/typescript/lib"
+}

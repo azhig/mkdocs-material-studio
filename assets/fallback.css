@@ -1,0 +1,429 @@
+/* Lightweight preview layer: webview base, highlight.js theme (light/slate),
+   line numbers, highlighting of editable blocks. Complements the real Material CSS. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+html {
+  height: 100%;
+  /* Deliberately NOT setting a background. The webview puts the palette scheme on
+     <body> (`data-md-color-scheme`), so the theme variables never reach <html>: it
+     would get the light fallback and turn white below the content while scrolling.
+     The browser itself propagates the <body> background to the whole page whenever
+     the root has no background of its own. */
+}
+body {
+  /* min-height specifically: with height: 100% the body does not stretch to fit a
+     long document, and the page background would show through again below its
+     bottom edge. */
+  min-height: 100%;
+  background: var(--md-default-bg-color, #fff);
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+}
+
+/* VS Code injects its own base styles into every webview, and among them is
+   `blockquote { background: var(--vscode-textBlockQuote-background); … }`.
+   Material does not set a blockquote background (only the left bar and the text
+   color), so the VS Code rule survived all the way to the screen: with a dark
+   editor theme and a light page scheme the blockquote got an almost black slab,
+   while the text on it kept the light scheme color, i.e. it was unreadable. We
+   restore the Material styling here.
+   Specificity (0,1,1) beats the injected `blockquote` (0,0,1). */
+.md-typeset blockquote {
+  background: none;
+  border-radius: 0;
+}
+
+#content {
+  box-sizing: border-box;
+  padding: 1.2rem 1.6rem 4rem;
+  max-width: 56rem;
+  margin: 0 auto;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* data-block-type is deliberately left without any styling of its own: the page
+   must look exactly like the published site. A block that can be opened (a double
+   click on an admonition or a code block) is not marked in any way — a frame
+   under the pointer turns reading into hovering over live areas. */
+
+/* Mermaid diagrams — centered. */
+#content .mermaid {
+  text-align: center;
+  background: transparent;
+}
+
+/* Math. */
+#content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ---- highlight.js: light theme (default) ---- */
+.hljs-comment,
+.hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-type {
+  color: #d73a49;
+}
+.hljs-string,
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: #032f62;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #005cc5;
+}
+.hljs-title,
+.hljs-name,
+.hljs-section,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #6f42c1;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable {
+  color: #e36209;
+}
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-tag {
+  color: #22863a;
+}
+.hljs-deletion {
+  color: #b31d28;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
+
+/* ---- highlight.js: dark theme (slate) ---- */
+[data-md-color-scheme="slate"] .hljs-comment,
+[data-md-color-scheme="slate"] .hljs-quote {
+  color: #8b949e;
+}
+[data-md-color-scheme="slate"] .hljs-keyword,
+[data-md-color-scheme="slate"] .hljs-selector-tag,
+[data-md-color-scheme="slate"] .hljs-literal,
+[data-md-color-scheme="slate"] .hljs-type {
+  color: #ff7b72;
+}
+[data-md-color-scheme="slate"] .hljs-string,
+[data-md-color-scheme="slate"] .hljs-regexp,
+[data-md-color-scheme="slate"] .hljs-addition {
+  color: #a5d6ff;
+}
+[data-md-color-scheme="slate"] .hljs-number,
+[data-md-color-scheme="slate"] .hljs-symbol,
+[data-md-color-scheme="slate"] .hljs-bullet {
+  color: #79c0ff;
+}
+[data-md-color-scheme="slate"] .hljs-title,
+[data-md-color-scheme="slate"] .hljs-name,
+[data-md-color-scheme="slate"] .hljs-section,
+[data-md-color-scheme="slate"] .hljs-selector-class {
+  color: #d2a8ff;
+}
+[data-md-color-scheme="slate"] .hljs-attr,
+[data-md-color-scheme="slate"] .hljs-attribute,
+[data-md-color-scheme="slate"] .hljs-variable {
+  color: #ffa657;
+}
+[data-md-color-scheme="slate"] .hljs-built_in,
+[data-md-color-scheme="slate"] .hljs-tag {
+  color: #7ee787;
+}
+
+/* ---- Per-line mode (linenums / hl_lines) ---- */
+.highlight.linenums code {
+  counter-reset: mkdocs-line;
+}
+.highlight.linenums code > span {
+  counter-increment: mkdocs-line;
+  display: inline-block;
+  width: 100%;
+}
+.highlight.linenums code > span::before {
+  content: counter(mkdocs-line);
+  display: inline-block;
+  width: 2.5em;
+  margin-right: 0.8em;
+  padding-right: 0.6em;
+  text-align: right;
+  color: var(--md-default-fg-color--lighter, rgba(0, 0, 0, 0.26));
+  border-right: 1px solid var(--md-default-fg-color--lightest, rgba(0, 0, 0, 0.07));
+  user-select: none;
+}
+.highlight code > span.hll {
+  background: var(--md-code-hl-color--light, rgba(255, 235, 59, 0.18));
+  display: inline-block;
+  width: 100%;
+}
+
+/* ---- Highlight marker colors (samples; the real ones live in the site's extra.css) ---- */
+.md-typeset mark.hl-yellow {
+  background: #fff3a0;
+  color: #000;
+}
+.md-typeset mark.hl-green {
+  background: #c3f0c8;
+  color: #000;
+}
+.md-typeset mark.hl-blue {
+  background: #bfe3ff;
+  color: #000;
+}
+.md-typeset mark.hl-pink {
+  background: #ffc9de;
+  color: #000;
+}
+.md-typeset mark.hl-orange {
+  background: #ffd8a8;
+  color: #000;
+}
+.md-typeset mark.hl-purple {
+  background: #e0c8ff;
+  color: #000;
+}
+
+/* ---- Annotations (pymdownx, the .annotate class) ---- */
+/* The list of explanations is hidden: its content is shown in a popup on the marker. */
+ol.annotation-list {
+  display: none;
+}
+.md-annotation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0 0.1rem;
+  border-radius: 50%;
+  background: var(--md-accent-fg-color, #526cfe);
+  color: var(--md-accent-bg-color, #fff);
+  vertical-align: text-top;
+  cursor: pointer;
+  user-select: none;
+}
+/* A “+” the way the Material site draws it — not the annotation's number, and
+   not a font glyph either: glyph metrics sit a “+” off the circle's center,
+   while two bars meeting in the middle cannot miss it. */
+.md-annotation::before {
+  content: "";
+  width: 0.52rem;
+  height: 0.52rem;
+  background:
+    linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat;
+  transition: transform 0.15s ease;
+}
+.md-annotation.on::before {
+  transform: rotate(45deg); /* the open tip shows an “×” */
+}
+.md-annotation:hover {
+  filter: brightness(1.12);
+}
+#annotip {
+  position: fixed;
+  z-index: 80;
+  display: none;
+  max-width: 320px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 4px;
+  background: var(--md-default-bg-color, #fff);
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+  border: 1px solid var(--md-default-fg-color--lightest, rgba(0, 0, 0, 0.12));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+#annotip.show {
+  display: block;
+}
+#annotip > *:first-child {
+  margin-top: 0;
+}
+#annotip > *:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- mkdocstrings block (`::: identifier`): a card in place of the future reference ----
+   The content is assembled by a Python plugin when the site is built, so here we
+   show only what is actually known from the file: the symbol name and the YAML
+   options. */
+.mkdocstrings {
+  margin: 0.8rem 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--md-default-fg-color--lighter, rgba(0, 0, 0, 0.32));
+  border-radius: 4px;
+  background-color: var(--md-code-bg-color, #f5f5f5);
+}
+.mkdocstrings-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.mkdocstrings-badge {
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background-color: var(--md-accent-fg-color, #526cfe);
+  color: var(--md-accent-bg-color, #fff);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+}
+/* The symbol name is plain monospaced text, without the Material theme's `code`
+   chip (its rule is more specific, hence the #doc / .md-typeset selectors). */
+.mkdocstrings-id,
+#doc .mkdocstrings-id,
+.md-typeset .mkdocstrings-id {
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.md-typeset .mkdocstrings-options,
+#doc .mkdocstrings-options {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  background: transparent;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light, rgba(0, 0, 0, 0.54));
+  white-space: pre-wrap;
+}
+.md-typeset .mkdocstrings-note,
+#doc .mkdocstrings-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light, rgba(0, 0, 0, 0.54));
+}
+
+/* ---- Page background from the VS Code theme (mkdocsStudio.pageBackground) ---- */
+/* Material derives the background of a scheme from its own hue — in slate a
+   bluish grey rather than the near-black of an editor theme. With `editor` the
+   page takes the colors of VS Code and stops standing out as a separate window;
+   the text and the accents stay Material's, so the contrast is unchanged.
+   The selector carries an attribute of its own so that it outweighs Material's
+   `[data-md-color-scheme=slate]`. */
+body[data-vs-bg="editor"] {
+  --md-default-bg-color: var(--vscode-editor-background);
+  /* The code background is derived from the page one rather than taken from
+     --vscode-textCodeBlock-background: not every theme defines that variable in
+     step with the editor background, and a light slab on a dark page is worse
+     than no change at all. A touch of the text color keeps the block visible. */
+  --md-code-bg-color: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 92%,
+    var(--vscode-editor-foreground)
+  );
+}
+
+/* ---- Heading permalink ---- */
+/* In Material a heading is painted with the plain text color (h1/h5/h6 with the
+   dimmed one), and the only link inside it is the small “¶” permalink. Our engine
+   uses markdown-it-anchor's headerLink, which wraps the WHOLE heading text in
+   <a class="header-anchor"> — so Material's `.md-typeset a` rule painted every
+   heading with the link color (in slate a bright blue, #5488e8). The anchor keeps
+   its role for navigation but has to look like plain heading text.
+   The color is repeated with the same variables Material uses for the headings
+   themselves rather than with `inherit`: an inherited color is not recomputed when
+   the scheme attribute flips on <body>, so after a theme toggle the anchor kept
+   the colors of the previous scheme. */
+.md-typeset :is(h1, h2, h3, h4, h5, h6) > a.header-anchor,
+#doc :is(h1, h2, h3, h4, h5, h6) > a.header-anchor {
+  text-decoration: none;
+}
+/* h2-h4 are the plain text color, h1/h5/h6 the dimmed one — exactly as in Material. */
+.md-typeset :is(h2, h3, h4) > a.header-anchor,
+#doc :is(h2, h3, h4) > a.header-anchor {
+  color: var(--md-typeset-color, var(--md-default-fg-color, rgba(0, 0, 0, 0.87)));
+}
+.md-typeset :is(h1, h5, h6) > a.header-anchor,
+#doc :is(h1, h5, h6) > a.header-anchor {
+  color: var(--md-default-fg-color--light, rgba(0, 0, 0, 0.54));
+}
+/* Material tints a link on hover/focus with the accent color — a heading must not
+   light up under the cursor. */
+.md-typeset :is(h2, h3, h4) > a.header-anchor:hover,
+.md-typeset :is(h2, h3, h4) > a.header-anchor:focus,
+#doc :is(h2, h3, h4) > a.header-anchor:hover,
+#doc :is(h2, h3, h4) > a.header-anchor:focus {
+  color: var(--md-typeset-color, var(--md-default-fg-color, rgba(0, 0, 0, 0.87)));
+}
+.md-typeset :is(h1, h5, h6) > a.header-anchor:hover,
+.md-typeset :is(h1, h5, h6) > a.header-anchor:focus,
+#doc :is(h1, h5, h6) > a.header-anchor:hover,
+#doc :is(h1, h5, h6) > a.header-anchor:focus {
+  color: var(--md-default-fg-color--light, rgba(0, 0, 0, 0.54));
+}
+
+/* ---- Code block: header with the file name and a copy button (as in Material) ---- */
+/* Anchor for .md-code__nav — the button is positioned relative to the block. */
+.highlight {
+  position: relative;
+}
+/* Block header: the file name is separated from the code body by a background and a line. */
+.highlight .filename {
+  display: block;
+  margin: 0;
+  padding: 0.42rem 3rem 0.42rem 0.8rem; /* room for the copy button on the right */
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--md-default-fg-color, rgba(0, 0, 0, 0.87));
+  background-color: var(--md-code-bg-color, #f5f5f5);
+  /* Semi-transparent layer over the code background: the header stands out more in both the light and the dark theme. */
+  background-image: linear-gradient(rgba(128, 128, 128, 0.14), rgba(128, 128, 128, 0.14));
+  border-bottom: 1px solid var(--md-default-fg-color--lightest, rgba(0, 0, 0, 0.12));
+  border-radius: 3px 3px 0 0;
+}
+/* Room for the copy button. The selector mirrors Material's
+   `.highlight span.filename` (otherwise its padding wins on specificity and a long
+   file name slides underneath the button). */
+.highlight span.filename {
+  padding-right: 3rem;
+}
+.md-typeset .highlight .filename + pre,
+#doc .highlight .filename + pre {
+  margin-top: 0;
+}
+.highlight .filename + pre > code {
+  border-radius: 0 0 3px 3px;
+}
+/* Copy button: the styling comes from the Material theme; here we only set the
+   webview behavior and a slightly more noticeable “resting” state: in Material the
+   button is almost invisible until the cursor is over the block, but in the editor
+   it has to be noticed right away. */
+.md-code__nav {
+  user-select: none;
+}
+.md-code__button {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--md-default-fg-color--lighter, rgba(0, 0, 0, 0.32));
+}

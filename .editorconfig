@@ -1,0 +1,18 @@
+; The formatting itself is Prettier's job (.prettierrc.json) — this file only
+; tells an editor what to do before Prettier ever runs.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+; Markdown gives a line-break meaning to two trailing spaces.
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
