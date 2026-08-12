@@ -4,6 +4,11 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- Restore `Ctrl/Cmd+V` paste in the diagram source field.
+- Detect Mermaid or PlantUML from diagram source instead of asking for a language.
+
 ## 0.1.1 — 2026-08-12
 
 - Add PlantUML fences, templates, local browser rendering, and editing through the existing diagram component.

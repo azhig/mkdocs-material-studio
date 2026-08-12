@@ -848,6 +848,13 @@ body.vtoc #vtoc {
   flex: 1;
   font-weight: 600;
 }
+.vmodal-language {
+  padding: 3px 7px;
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-radius: 999px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
 .vmodal-bar select {
   font: inherit;
   padding: 3px 6px;

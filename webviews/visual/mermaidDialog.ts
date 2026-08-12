@@ -95,7 +95,31 @@ const PLANTUML_TEMPLATES: Array<{ id: string; label: string; code: string }> = [
   },
 ];
 
-type DiagramLanguage = "mermaid" | "plantuml";
+export type DiagramLanguage = "mermaid" | "plantuml";
+
+const MERMAID_HEADER =
+  /^\s*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline|quadrantChart|xychart-beta|block-beta|packet-beta|kanban|architecture-beta|sankey-beta|requirementDiagram|C4\w*)\b/im;
+
+/** Detects the renderer from the source while retaining the known fence as an ambiguity fallback. */
+export function detectDiagramLanguage(
+  source: string,
+  fallback: DiagramLanguage = "mermaid",
+): DiagramLanguage {
+  if (/^\s*@start\w*\b/im.test(source) || /^\s*@end\w*\b/im.test(source)) {
+    return "plantuml";
+  }
+  if (MERMAID_HEADER.test(source)) {
+    return "mermaid";
+  }
+  if (
+    /^\s*(?:!include|!define|skinparam|left\s+to\s+right\s+direction|actor|participant|boundary|control|entity|database|component|package)\b/im.test(
+      source,
+    )
+  ) {
+    return "plantuml";
+  }
+  return fallback;
+}
 
 function templates(language: DiagramLanguage): Array<{ id: string; label: string; code: string }> {
   return language === "plantuml" ? PLANTUML_TEMPLATES : MERMAID_TEMPLATES;
@@ -121,17 +145,10 @@ export function openMermaidDialog(
   const title = document.createElement("span");
   title.className = "grow";
   title.textContent = t("Diagram");
-  const language = document.createElement("select");
-  for (const [value, label] of [
-    ["mermaid", "Mermaid"],
-    ["plantuml", "PlantUML"],
-  ] as const) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    option.selected = value === initialLanguage;
-    language.appendChild(option);
-  }
+  let language = detectDiagramLanguage(source, initialLanguage);
+  const languageLabel = document.createElement("span");
+  languageLabel.className = "vmodal-language";
+  languageLabel.textContent = language === "plantuml" ? "PlantUML" : "Mermaid";
   const tmpl = document.createElement("select");
   const fillTemplates = (): void => {
     tmpl.replaceChildren();
@@ -139,7 +156,7 @@ export function openMermaidDialog(
     ph.value = "";
     ph.textContent = t("Insert a template…");
     tmpl.appendChild(ph);
-    for (const tpl of templates(language.value as DiagramLanguage)) {
+    for (const tpl of templates(language)) {
       const option = document.createElement("option");
       option.value = tpl.id;
       option.textContent = tpl.label;
@@ -147,7 +164,7 @@ export function openMermaidDialog(
     }
   };
   fillTemplates();
-  bar.append(title, language, tmpl);
+  bar.append(title, languageLabel, tmpl);
 
   const body = document.createElement("div");
   body.className = "vmodal-body";
@@ -193,23 +210,25 @@ export function openMermaidDialog(
       return;
     }
     close();
-    onSave(code, language.value as DiagramLanguage);
+    onSave(code, detectDiagramLanguage(code, language));
   });
   tmpl.addEventListener("change", () => {
-    const tpl = templates(language.value as DiagramLanguage).find((x) => x.id === tmpl.value);
+    const tpl = templates(language).find((x) => x.id === tmpl.value);
     if (tpl) {
       ta.value = tpl.code;
       schedulePreview();
       ta.focus();
     }
   });
-  language.addEventListener("change", () => {
-    fillTemplates();
-    ta.value = templates(language.value as DiagramLanguage)[0].code;
-    schedulePreview();
-    ta.focus();
-  });
   ta.addEventListener("keydown", (e) => {
+    const pasteKey =
+      (e.metaKey || e.ctrlKey) &&
+      !e.altKey &&
+      (e.code === "KeyV" || (e.code === "" && e.key.toLowerCase() === "v"));
+    if (pasteKey) {
+      // VS Code performs Paste after the key reaches its webview bridge.
+      return;
+    }
     // The editor hotkeys must not fire while the diagram code is being typed.
     e.stopPropagation();
     if (e.key === "Escape") {
@@ -224,6 +243,12 @@ export function openMermaidDialog(
 
   let previewTimer: ReturnType<typeof setTimeout> | undefined;
   const schedulePreview = (): void => {
+    const nextLanguage = detectDiagramLanguage(ta.value, language);
+    if (nextLanguage !== language) {
+      language = nextLanguage;
+      languageLabel.textContent = language === "plantuml" ? "PlantUML" : "Mermaid";
+      fillTemplates();
+    }
     if (previewTimer) {
       clearTimeout(previewTimer);
     }
@@ -238,7 +263,7 @@ export function openMermaidDialog(
       err.textContent = "";
       return;
     }
-    if (language.value === "plantuml") {
+    if (language === "plantuml") {
       try {
         const svg = await renderPlantUmlSource(code);
         if (!overlay.isConnected) {
