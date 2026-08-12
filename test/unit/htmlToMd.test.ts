@@ -79,6 +79,10 @@ describe("htmlToMd: canonical round-trip", () => {
     expectRoundTrip("![Diagram](images/pic.png)\n");
   });
 
+  it("PlantUML fences round-trip as diagram islands", () => {
+    expectRoundTrip("```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```\n");
+  });
+
   it("Material button (attrs)", () => {
     expectRoundTrip("[Read more](#){ .md-button }\n");
   });

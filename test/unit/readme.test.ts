@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, "../..");
 interface Manifest {
   contributes: {
     commands: Array<{ command: string; title: string }>;
-    configuration: { properties: Record<string, unknown> };
+    configuration: { properties: Record<string, { default?: unknown }> };
   };
 }
 
@@ -62,6 +62,15 @@ describe("the README describes the extension that is actually shipped", () => {
       missing,
       `Settings with no line in the README:\n` + missing.map((m) => `  ${m}`).join("\n"),
     ).toEqual([]);
+  });
+
+  it("defaults both palette schemes to cyan", () => {
+    const properties = manifest().contributes.configuration.properties;
+    for (const scheme of ["light", "dark"]) {
+      for (const role of ["primary", "accent"]) {
+        expect(properties[`mkdocsStudio.palette.${scheme}.${role}`]?.default).toBe("cyan");
+      }
+    }
   });
 
   it("promises no setting that does not exist", () => {

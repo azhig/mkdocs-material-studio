@@ -194,7 +194,7 @@ import {
   type SiteChromeHooks,
 } from "../shared/siteChrome";
 import { t } from "../shared/i18n";
-import { applyExtraCss, initMermaid, renderMermaid, watchMermaidReveal } from "../shared/mermaid";
+import { applyExtraCss, initMermaid, renderDiagrams, watchMermaidReveal } from "../shared/mermaid";
 import { applyBackground, applyPalette, toggleTheme, type PaletteMsg } from "../shared/scheme";
 import {
   initView,
@@ -212,7 +212,13 @@ interface VsCodeApi {
 }
 declare function acquireVsCodeApi(): VsCodeApi;
 declare const window: Window & {
-  __visual?: { mermaidUri: string; katexUri?: string; nonce: string };
+  __visual?: {
+    mermaidUri: string;
+    plantumlUri?: string;
+    plantumlVizUri?: string;
+    katexUri?: string;
+    nonce: string;
+  };
   // Drawing the page is shared/mermaid's business; the dialog renders a single
   // diagram of its own and needs parse/render as well.
   __mermaid?: {
@@ -465,7 +471,7 @@ function applyRender(html: string, text: string, ver: number): void {
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
   });
-  void renderMermaid(docEl);
+  void renderDiagrams(docEl);
   refreshToc();
   decorateAnnotations();
   repositionHandle(); // blocks were recreated — the handle either moves or disappears
@@ -554,7 +560,7 @@ function applyPatches(html: string, text: string, ver: number): void {
       sel?.addRange(range0);
     }
   }
-  void renderMermaid(docEl);
+  void renderDiagrams(docEl);
   refreshToc();
   decorateAnnotations();
   repositionHandle();
@@ -716,6 +722,9 @@ function decorateBlock(el: Element): void {
     el.setAttribute("contenteditable", "false");
     if (el.classList.contains("mermaid") && !el.hasAttribute("data-mermaid-src")) {
       el.setAttribute("data-mermaid-src", el.textContent ?? "");
+    }
+    if (el.classList.contains("plantuml") && !el.hasAttribute("data-plantuml-src")) {
+      el.setAttribute("data-plantuml-src", el.textContent ?? "");
     }
     attachIslandTools(el);
     return;
@@ -1093,20 +1102,26 @@ function openIslandEditor(el: HTMLElement): void {
   // For a nested block the container's service indent is stripped: the user edits
   // the markdown itself, and the admonition's four spaces come back on save.
   const { indent, lines } = dedentLines(docLines().slice(start, end));
-  if (el.classList.contains("mermaid")) {
+  if (el.classList.contains("mermaid") || el.classList.contains("plantuml")) {
     // A diagram gets the dialog with a live preview instead of a plain textarea.
     // The fence lines are preserved as they are — only the body is edited.
-    const openLine = lines[0] ?? "```mermaid";
+    const language = el.classList.contains("plantuml") ? "plantuml" : "mermaid";
+    const openLine = lines[0] ?? `\`\`\`${language}`;
     const closeLine = lines.length > 1 ? (lines[lines.length - 1] ?? "```") : "```";
     openMermaidDialog(
       lines.slice(1, Math.max(1, lines.length - 1)).join("\n"),
       t("Save"),
-      (code) => {
+      (code, nextLanguage) => {
         const cur = rangeOf(el); // the range could have shifted due to parallel edits
-        const fence = indentLines([openLine, ...code.split("\n"), closeLine], indent);
+        const nextOpenLine =
+          nextLanguage === language
+            ? openLine
+            : openLine.replace(/^(\s*(?:`{3,}|~{3,})\s*)[\w+-]+/, `$1${nextLanguage}`);
+        const fence = indentLines([nextOpenLine, ...code.split("\n"), closeLine], indent);
         document.getSelection()?.removeAllRanges();
         sendSync([{ start: cur.start, end: cur.end, text: fence.join("\n") + "\n" }]);
       },
+      language,
     );
     return;
   }

@@ -86,4 +86,9 @@ describe("contentSecurityPolicy", () => {
   it("mentions connect-src for a page that fetches on its own", () => {
     expect(contentSecurityPolicy("SELF", "n", { connect: true })).toContain("connect-src SELF");
   });
+
+  it("allows WebAssembly compilation only where explicitly requested", () => {
+    expect(contentSecurityPolicy("SELF", "n", { wasm: true })).toContain("'wasm-unsafe-eval'");
+    expect(contentSecurityPolicy("SELF", "n")).not.toContain("'wasm-unsafe-eval'");
+  });
 });

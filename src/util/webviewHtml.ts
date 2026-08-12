@@ -57,6 +57,8 @@ export interface CspExtras {
   font?: string[];
   /** Whether the page fetches anything itself (the visual editor loads its icons). */
   connect?: boolean;
+  /** Whether a bundled runtime compiles WebAssembly (PlantUML's local Graphviz engine). */
+  wasm?: boolean;
 }
 
 /**
@@ -71,7 +73,7 @@ export function contentSecurityPolicy(
   const directives = [
     "default-src 'none'",
     `style-src ${webviewSource} 'unsafe-inline'`,
-    `script-src 'nonce-${nonce}'`,
+    `script-src 'nonce-${nonce}'${extras.wasm ? " 'wasm-unsafe-eval'" : ""}`,
     `img-src ${[webviewSource, ...(extras.img ?? [])].join(" ")}`,
     `font-src ${[webviewSource, ...(extras.font ?? [])].join(" ")}`,
   ];

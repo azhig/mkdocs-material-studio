@@ -527,6 +527,7 @@ export function blockTypeName(block: HTMLElement): string {
   }
   if (block.classList.contains("tabbed-set")) return t("Tabs");
   if (block.classList.contains("mermaid")) return t("Mermaid diagram");
+  if (block.classList.contains("plantuml")) return t("PlantUML diagram");
   if (block.classList.contains("arithmatex")) return t("Formula");
   if (block.classList.contains("mkdocstrings")) return t("API reference (mkdocstrings)");
   if (block.classList.contains("grid")) return t("Card grid");

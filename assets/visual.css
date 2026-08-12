@@ -887,7 +887,8 @@ body.vtoc #vtoc {
 .vmodal-preview.stale {
   opacity: 0.4;
 }
-.vmodal-preview svg {
+.vmodal-preview svg,
+.vmodal-preview img {
   max-width: 100%;
 }
 .vmodal-foot {

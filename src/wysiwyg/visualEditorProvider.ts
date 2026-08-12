@@ -632,11 +632,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     const visualJs = this.asset(webview, "dist", "webview", "visual.js");
     const mermaidJs = this.asset(webview, "dist", "webview", "mermaid.js");
     const katexJs = this.asset(webview, "dist", "webview", "katex.js");
+    const plantumlJs = this.asset(webview, "dist", "webview", "plantuml.js");
+    const plantumlVizJs = this.asset(webview, "dist", "webview", "plantuml-viz.js");
 
     const csp = contentSecurityPolicy(webview.cspSource, nonce, {
       img: ["https:", "data:"],
       font: ["https:", "data:"],
       connect: true,
+      wasm: true,
     });
 
     // The inline formatting placement class is set right away (before the
@@ -705,7 +708,13 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   <aside id="vtoc" aria-label="${esc(t("Table of contents"))}"></aside>
 </div>
 <script nonce="${nonce}">
-window.__visual = { mermaidUri: "${mermaidJs}", katexUri: "${katexJs}", nonce: "${nonce}" };
+window.__visual = ${embedJson({
+      mermaidUri: mermaidJs,
+      plantumlUri: plantumlJs,
+      plantumlVizUri: plantumlVizJs,
+      katexUri: katexJs,
+      nonce,
+    })};
 window.__i18n = ${embedJson({ lang: currentLanguage(), strings: translations() })};
 </script>
 <script nonce="${nonce}" src="${visualJs}"></script>

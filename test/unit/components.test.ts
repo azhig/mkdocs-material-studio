@@ -92,6 +92,13 @@ describe("component generators", () => {
     expect(out).toContain("sequenceDiagram");
   });
 
+  it("plantuml — diagram language", () => {
+    const out = gen("mermaid", { language: "plantuml", kind: "sequence" });
+    expect(out).toContain("```plantuml");
+    expect(out).toContain("@startuml");
+    expect(out).toContain("Alice -> Bob");
+  });
+
   it("math — block and inline", () => {
     expect(gen("math", { mode: "block", latex: "x^2" })).toBe("$$\nx^2\n$$\n");
     expect(gen("math", { mode: "inline", latex: "x" })).toBe("$x$");

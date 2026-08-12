@@ -36,6 +36,7 @@ dependencies. Their copyright and licenses remain with their holders.
 | highlight.js                                                                    | BSD-3-Clause | Syntax highlighting of code              |
 | katex                                                                           | MIT          | Rendering formulas (server-side)         |
 | mermaid                                                                         | MIT          | Diagrams (loaded on demand in a webview) |
+| @plantuml/core                                                                  | MIT          | PlantUML diagrams (loaded on demand)     |
 | yaml                                                                            | ISC          | AST-level edits of `mkdocs.yml`          |
 
 ## Build tools (not part of the VSIX)

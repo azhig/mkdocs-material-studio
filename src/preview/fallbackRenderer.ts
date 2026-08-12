@@ -127,7 +127,7 @@ function resolveAsset(
  */
 function paletteFromSettings(scope?: vscode.Uri): PaletteInfo {
   const cfg = vscode.workspace.getConfiguration("mkdocsStudio", scope);
-  const read = (key: string): string | undefined => cfg.get<string>(key) || undefined;
+  const read = (key: string): string | undefined => cfg.get<string>(key, "cyan") || undefined;
   return {
     light: { primary: read("palette.light.primary"), accent: read("palette.light.accent") },
     dark: { primary: read("palette.dark.primary"), accent: read("palette.dark.accent") },

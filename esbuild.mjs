@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { cp, mkdir, rm, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, readdir, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
 const production = process.argv.includes("--production");
@@ -32,6 +32,17 @@ const webviewConfigs = [
   {
     entryPoints: ["webviews/vendor/mermaid.ts"],
     outfile: "dist/webview/mermaid.js",
+  },
+  {
+    entryPoints: ["node_modules/@plantuml/core/viz-global.js"],
+    outfile: "dist/webview/plantuml-viz.js",
+    // This UMD file contains a dead Node fallback (`require("url")`). Keeping it
+    // as one browser script avoids resolving that branch during bundling.
+    bundle: false,
+  },
+  {
+    entryPoints: ["webviews/vendor/plantuml.ts"],
+    outfile: "dist/webview/plantuml.js",
   },
   {
     entryPoints: ["webviews/vendor/katex.ts"],
@@ -88,7 +99,7 @@ async function integrationTestConfigs() {
 function webviewOptions(entry) {
   return {
     ...entry,
-    bundle: true,
+    bundle: entry.bundle ?? true,
     format: "iife",
     platform: "browser",
     target: "es2020",
@@ -114,6 +125,15 @@ async function copyVendorAssets() {
   await mkdir(codiconOut, { recursive: true });
   await cp(path.join(codiconSrc, "codicon.css"), path.join(codiconOut, "codicon.css"));
   await cp(path.join(codiconSrc, "codicon.ttf"), path.join(codiconOut, "codicon.ttf"));
+
+  // The PlantUML JavaScript itself is bundled into dist; ship its MIT notice too.
+  const plantumlOut = path.join(ROOT, "assets", "vendor", "plantuml");
+  await mkdir(plantumlOut, { recursive: true });
+  const plantumlLicense = await readFile(
+    path.join(ROOT, "node_modules", "@plantuml", "core", "LICENSE"),
+    "utf8",
+  );
+  await writeFile(path.join(plantumlOut, "LICENSE"), plantumlLicense.replace(/\r\n/g, "\n"));
 }
 
 /**

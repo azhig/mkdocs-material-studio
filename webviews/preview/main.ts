@@ -8,7 +8,7 @@ import { initReadOnlyMenu } from "./contextMenu";
 import {
   applyExtraCss,
   initMermaid,
-  renderMermaid,
+  renderDiagrams,
   reRenderMermaidTheme,
   watchMermaidReveal,
 } from "../shared/mermaid";
@@ -29,6 +29,8 @@ import {
 
 interface PreviewConfig {
   mermaidUri: string;
+  plantumlUri?: string;
+  plantumlVizUri?: string;
   nonce: string;
 }
 
@@ -381,7 +383,7 @@ function renderContent(html: string, docId: string): void {
   suppressScroll = true;
   content.scrollTop = keepScroll;
   setTimeout(() => (suppressScroll = false), 120);
-  void renderMermaid(content);
+  void renderDiagrams(content);
 }
 
 /** Copy button on every code block — as in Material (content.code.copy). */

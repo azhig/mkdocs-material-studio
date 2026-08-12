@@ -79,6 +79,7 @@ const KEEP_CLASSES = new Set([
   "tabbed-block",
   "arithmatex",
   "mermaid",
+  "plantuml",
   "mkdocstrings",
   "grid",
   "cards",
@@ -247,6 +248,7 @@ function structuralClasses(el: Element): string[] {
  */
 const CLASS_KEPT_ATTRS: Record<string, string[]> = {
   mermaid: ["data-mermaid-src"],
+  plantuml: ["data-plantuml-src"],
   arithmatex: ["data-tex", "data-math-delim"],
   twemoji: ["data-emoji", "title"],
   keys: ["data-keys"],
@@ -305,7 +307,7 @@ export function fragmentHasContent(fragment: DocumentFragment): boolean {
   return (
     (fragment.textContent ?? "").trim() !== "" ||
     fragment.querySelector(
-      "img, hr, br, [data-mermaid-src], [data-tex], [data-emoji], [data-keys], [data-snippet-path]",
+      "img, hr, br, [data-mermaid-src], [data-plantuml-src], [data-tex], [data-emoji], [data-keys], [data-snippet-path]",
     ) !== null
   );
 }

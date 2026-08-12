@@ -6,7 +6,7 @@ import type { SnippetReader } from "./snippets";
  * Code blocks in the pymdownx.superfences + Material style.
  *
  *   ```python title="app.py" hl_lines="2 3" linenums="1"
- *   ```mermaid                         → a diagram (rendered in the webview)
+ *   ```mermaid / ```plantuml           → a diagram (rendered in the webview)
  *   ```{ .python .extra title="..." }  → the extended info-string form
  *
  * Colored highlighting (highlight.js) is applied to ordinary blocks. Blocks with
@@ -66,6 +66,9 @@ export function superFencesPlugin(md: MarkdownIt, readSnippet?: SnippetReader): 
 
     if (info.lang === "mermaid") {
       return `<pre class="mermaid"${srcAttrs}${infoAttr}${fenceAttr}>${md.utils.escapeHtml(code)}</pre>\n`;
+    }
+    if (info.lang === "plantuml" || info.lang === "puml") {
+      return `<pre class="plantuml"${srcAttrs}${infoAttr}${fenceAttr}>${md.utils.escapeHtml(code)}</pre>\n`;
     }
 
     const useLineMode = info.linenums || info.hlLines.size > 0;

@@ -67,6 +67,15 @@ describe("superfences", () => {
     expect(html).toContain("A--&gt;B");
   });
 
+  it("plantuml and puml → pre.plantuml", () => {
+    for (const language of ["plantuml", "puml"]) {
+      const html = render(`\`\`\`${language}\n@startuml\nAlice -> Bob\n@enduml\n\`\`\`\n`);
+      expect(html).toContain('<pre class="plantuml"');
+      expect(html).toContain('data-block-type="code"');
+      expect(html).toContain("Alice -&gt; Bob");
+    }
+  });
+
   it("title and linenums", () => {
     const html = render('```python title="app.py" linenums="1"\nx = 1\n```\n');
     expect(html).toContain('class="filename">app.py<');

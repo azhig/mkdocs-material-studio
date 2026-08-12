@@ -50,10 +50,17 @@ body {
    click on an admonition or a code block) is not marked in any way — a frame
    under the pointer turns reading into hovering over live areas. */
 
-/* Mermaid diagrams — centered. */
-#content .mermaid {
+/* Text diagrams — centered. */
+#content .mermaid,
+#content .plantuml {
   text-align: center;
   background: transparent;
+}
+#content .plantuml img,
+#doc .plantuml img {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
 }
 
 /* Math. */

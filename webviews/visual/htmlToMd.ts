@@ -243,6 +243,11 @@ function preLines(el: Element): string[] {
     const code = src.replace(/\n$/, "");
     return [fenceFor(code) + "mermaid", ...code.split("\n"), fenceFor(code)];
   }
+  if (el.classList.contains("plantuml")) {
+    const src = el.getAttribute("data-plantuml-src") ?? el.textContent ?? "";
+    const code = src.replace(/\n$/, "");
+    return [fenceFor(code) + "plantuml", ...code.split("\n"), fenceFor(code)];
+  }
   const codeEl = el.querySelector(":scope > code");
   const code = ((codeEl ?? el).textContent ?? "").replace(/\n$/, "");
   const lang = languageFromClass(codeEl);

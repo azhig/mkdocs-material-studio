@@ -17,7 +17,7 @@ VS Code. **Python is not required**: the page is drawn by a built-in engine.
 
 The whole [Material reference](https://squidfunk.github.io/mkdocs-material/reference/)
 is drawn: admonitions, content tabs, code blocks with highlighting and line
-numbers, tables, Mermaid diagrams, formulas, footnotes, annotations, card grids,
+numbers, tables, Mermaid and PlantUML diagrams, formulas, footnotes, annotations, card grids,
 icons and emoji, task lists and definition lists. It updates as you type.
 
 - **Your project's look.** The brand colours of `theme.palette` and the custom
@@ -51,6 +51,8 @@ text editor is untouched; the visual one opens only when you ask for it.
   a key combination, a footnote marker, an abbreviation, a link, a button.
 - **A code block is edited in place**, with live highlighting and line numbers;
   the language and the title live in the block menu.
+- **One diagram component for Mermaid and PlantUML**, with language-specific
+  templates, live preview and source editing.
 - **Tables**: `Tab` and `Shift+Tab` move between cells, `Enter` moves down; a
   floating menu adds rows and columns and sets alignment.
 - **Pasting from a browser or an office editor is sanitized** — headings, lists,
@@ -145,6 +147,10 @@ setting.
 None. No Python, no `mkdocs` installation, no local server — the preview is
 rendered by the extension itself.
 
+Mermaid and PlantUML are rendered locally by browser-native JavaScript engines.
+Diagram source never leaves VS Code, and neither Java nor a network connection
+is required.
+
 The extension does not run `mkdocs serve` and does not manage a server. To see
 the built site with search, plugins and `mkdocstrings`, run `mkdocs serve` in the
 terminal and open it in a browser.
@@ -212,10 +218,10 @@ Code untouched, and a shortcut you reassign hands its old key straight back.
 | `mkdocsStudio.showSiteNav`           | `false`                     | Show the page list on the left; the **Navigation** button toggles it                      |
 | `mkdocsStudio.showToc`               | `false`                     | Show the “On this page” panel; the **Contents** button toggles it                         |
 | `mkdocsStudio.pageBackground`        | `material`                  | `material` — the colour of the Material scheme; `editor` — the VS Code theme's background |
-| `mkdocsStudio.palette.light.primary` | `""`                        | Primary colour of the light scheme; `theme.palette` in `mkdocs.yml` wins                  |
-| `mkdocsStudio.palette.light.accent`  | `""`                        | Accent colour of the light scheme — links and active elements                             |
-| `mkdocsStudio.palette.dark.primary`  | `""`                        | Primary colour of the dark (`slate`) scheme                                               |
-| `mkdocsStudio.palette.dark.accent`   | `""`                        | Accent colour of the dark scheme                                                          |
+| `mkdocsStudio.palette.light.primary` | `cyan`                      | Primary colour of the light scheme; `theme.palette` in `mkdocs.yml` wins                  |
+| `mkdocsStudio.palette.light.accent`  | `cyan`                      | Accent colour of the light scheme — links and active elements                             |
+| `mkdocsStudio.palette.dark.primary`  | `cyan`                      | Primary colour of the dark (`slate`) scheme                                               |
+| `mkdocsStudio.palette.dark.accent`   | `cyan`                      | Accent colour of the dark scheme                                                          |
 | `mkdocsStudio.imagePasteFolder`      | `assets`                    | Where pasted and dropped images are saved, relative to the current file                   |
 | `mkdocsStudio.inlineFormatting`      | `both`                      | Where formatting appears: `selection`, `toolbar` or `both`                                |
 | `mkdocsStudio.toolbarButtons`        | table, image, code, divider | Components pinned to the visual editor toolbar                                            |

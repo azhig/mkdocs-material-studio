@@ -531,10 +531,13 @@ export class PreviewPanelManager {
     const katexCss = this.assetUri(webview, "assets", "vendor", "katex", "katex.min.css");
     const previewJs = this.assetUri(webview, "dist", "webview", "preview.js");
     const mermaidJs = this.assetUri(webview, "dist", "webview", "mermaid.js");
+    const plantumlJs = this.assetUri(webview, "dist", "webview", "plantuml.js");
+    const plantumlVizJs = this.assetUri(webview, "dist", "webview", "plantuml-viz.js");
 
     const csp = contentSecurityPolicy(webview.cspSource, nonce, {
       img: ["https:", "data:"],
       font: ["https:", "data:"],
+      wasm: true,
     });
 
     return /* html */ `<!DOCTYPE html>
@@ -624,7 +627,12 @@ export class PreviewPanelManager {
   <div id="overlay" class="show"><div class="box"><span class="spinner"></span>${esc(t("Initializing…"))}</div></div>
 </div>
 <script nonce="${nonce}">
-  window.__mkdocsPreview = { mermaidUri: "${mermaidJs}", nonce: "${nonce}" };
+  window.__mkdocsPreview = ${embedJson({
+    mermaidUri: mermaidJs,
+    plantumlUri: plantumlJs,
+    plantumlVizUri: plantumlVizJs,
+    nonce,
+  })};
   window.__i18n = ${embedJson({ lang: currentLanguage(), strings: translations() })};
 </script>
 <script nonce="${nonce}" src="${previewJs}"></script>

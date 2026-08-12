@@ -13,7 +13,7 @@ declare const window: Window & {
     render: (id: string, code: string) => Promise<{ svg: string }>;
   };
 };
-import { ensureMermaid } from "../shared/mermaid";
+import { ensureMermaid, renderPlantUmlSource } from "../shared/mermaid";
 import { closePopup, firstErrorLine } from "./popups";
 
 export interface MermaidDialogHost {
@@ -67,12 +67,47 @@ const MERMAID_TEMPLATES: Array<{ id: string; label: string; code: string }> = [
   },
 ];
 
+const PLANTUML_TEMPLATES: Array<{ id: string; label: string; code: string }> = [
+  {
+    id: "sequence",
+    label: t("Sequence"),
+    code: `@startuml\nAlice -> Bob: ${t("Hi")}\nBob --> Alice: ${t("Reply")}\n@enduml`,
+  },
+  {
+    id: "class",
+    label: t("Classes"),
+    code: "@startuml\nclass Animal {\n  +int age\n  +run()\n}\n@enduml",
+  },
+  {
+    id: "activity",
+    label: t("Activity"),
+    code: `@startuml\nstart\n:${t("Task")};\nif (${t("Condition")}?) then (${t("Yes")})\n  :${t("Done")};\nelse (${t("No")})\n  :${t("Task")};\nendif\nstop\n@enduml`,
+  },
+  {
+    id: "state",
+    label: t("States"),
+    code: `@startuml\n[*] --> ${t("Active")}\n${t("Active")} --> [*]\n@enduml`,
+  },
+  {
+    id: "component",
+    label: t("Components"),
+    code: "@startuml\n[Client] --> [API]\n[API] --> [Database]\n@enduml",
+  },
+];
+
+type DiagramLanguage = "mermaid" | "plantuml";
+
+function templates(language: DiagramLanguage): Array<{ id: string; label: string; code: string }> {
+  return language === "plantuml" ? PLANTUML_TEMPLATES : MERMAID_TEMPLATES;
+}
+
 let mermaidDlgSeq = 0;
 
 export function openMermaidDialog(
   source: string,
   okLabel: string,
-  onSave: (code: string) => void,
+  onSave: (code: string, language: DiagramLanguage) => void,
+  initialLanguage: DiagramLanguage = "mermaid",
 ): void {
   closePopup();
   const overlay = document.createElement("div");
@@ -85,19 +120,34 @@ export function openMermaidDialog(
   bar.className = "vmodal-bar";
   const title = document.createElement("span");
   title.className = "grow";
-  title.textContent = t("Mermaid diagram");
-  const tmpl = document.createElement("select");
-  const ph = document.createElement("option");
-  ph.value = "";
-  ph.textContent = t("Insert a template…");
-  tmpl.appendChild(ph);
-  for (const tpl of MERMAID_TEMPLATES) {
-    const o = document.createElement("option");
-    o.value = tpl.id;
-    o.textContent = tpl.label;
-    tmpl.appendChild(o);
+  title.textContent = t("Diagram");
+  const language = document.createElement("select");
+  for (const [value, label] of [
+    ["mermaid", "Mermaid"],
+    ["plantuml", "PlantUML"],
+  ] as const) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === initialLanguage;
+    language.appendChild(option);
   }
-  bar.append(title, tmpl);
+  const tmpl = document.createElement("select");
+  const fillTemplates = (): void => {
+    tmpl.replaceChildren();
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = t("Insert a template…");
+    tmpl.appendChild(ph);
+    for (const tpl of templates(language.value as DiagramLanguage)) {
+      const option = document.createElement("option");
+      option.value = tpl.id;
+      option.textContent = tpl.label;
+      tmpl.appendChild(option);
+    }
+  };
+  fillTemplates();
+  bar.append(title, language, tmpl);
 
   const body = document.createElement("div");
   body.className = "vmodal-body";
@@ -143,15 +193,21 @@ export function openMermaidDialog(
       return;
     }
     close();
-    onSave(code);
+    onSave(code, language.value as DiagramLanguage);
   });
   tmpl.addEventListener("change", () => {
-    const tpl = MERMAID_TEMPLATES.find((x) => x.id === tmpl.value);
+    const tpl = templates(language.value as DiagramLanguage).find((x) => x.id === tmpl.value);
     if (tpl) {
       ta.value = tpl.code;
       schedulePreview();
       ta.focus();
     }
+  });
+  language.addEventListener("change", () => {
+    fillTemplates();
+    ta.value = templates(language.value as DiagramLanguage)[0].code;
+    schedulePreview();
+    ta.focus();
   });
   ta.addEventListener("keydown", (e) => {
     // The editor hotkeys must not fire while the diagram code is being typed.
@@ -180,6 +236,21 @@ export function openMermaidDialog(
     if (!code) {
       preview.innerHTML = "";
       err.textContent = "";
+      return;
+    }
+    if (language.value === "plantuml") {
+      try {
+        const svg = await renderPlantUmlSource(code);
+        if (!overlay.isConnected) {
+          return;
+        }
+        preview.innerHTML = svg;
+        preview.classList.remove("stale");
+        err.textContent = "";
+      } catch (e) {
+        preview.classList.add("stale");
+        err.textContent = firstErrorLine(e);
+      }
       return;
     }
     const id = `vmdlg${++mermaidDlgSeq}`;
@@ -217,7 +288,7 @@ export function openMermaidDialog(
 /** Inserting a diagram: the insert point is captured before the dialog steals focus. */
 export function openMermaidInsert(): void {
   const point = host.insertPoint();
-  openMermaidDialog(MERMAID_TEMPLATES[0].code, t("Insert"), (code) => {
-    host.insertBlock("```mermaid\n" + code + "\n```", point);
+  openMermaidDialog(MERMAID_TEMPLATES[0].code, t("Insert"), (code, language) => {
+    host.insertBlock(`\`\`\`${language}\n${code}\n\`\`\``, point);
   });
 }

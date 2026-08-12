@@ -7,17 +7,29 @@
 
 declare const window: Window & {
   __mermaid?: { initialize: (o: unknown) => void; run: (o?: unknown) => Promise<void> };
+  __plantuml?: {
+    renderToString: (
+      lines: string[],
+      onSuccess: (svg: string) => void,
+      onError: (message: string) => void,
+    ) => void;
+  };
 };
 
 export interface MermaidConfig {
   /** Address of the bundle inside the webview; empty means diagrams are off. */
   mermaidUri: string;
+  /** Addresses of the local PlantUML engine and its Graphviz runtime. */
+  plantumlUri?: string;
+  plantumlVizUri?: string;
   /** The CSP nonce of this webview — without it the script is refused. */
   nonce?: string;
 }
 
 let config: MermaidConfig = { mermaidUri: "" };
 let loading: Promise<void> | undefined;
+let plantUmlLoading: Promise<void> | undefined;
+let plantUmlQueue = Promise.resolve();
 
 export function initMermaid(next: MermaidConfig): void {
   config = next;
@@ -71,6 +83,78 @@ export async function renderMermaid(root: ParentNode): Promise<void> {
   }
 }
 
+function loadScript(src: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    if (config.nonce) {
+      script.setAttribute("nonce", config.nonce);
+    }
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`diagram runtime load failed: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+/** Loads the official browser-native PlantUML engine once, with no server or Java. */
+export function ensurePlantUml(): Promise<void> {
+  if (window.__plantuml) {
+    return Promise.resolve();
+  }
+  if (!plantUmlLoading) {
+    plantUmlLoading = (async () => {
+      if (!config.plantumlUri || !config.plantumlVizUri) {
+        throw new Error("PlantUML runtime is unavailable");
+      }
+      await loadScript(config.plantumlVizUri);
+      await loadScript(config.plantumlUri);
+    })();
+  }
+  return plantUmlLoading;
+}
+
+/** Renders through a serialized queue: the PlantUML TeaVM engine has shared state. */
+export function renderPlantUmlSource(source: string): Promise<string> {
+  const render = async (): Promise<string> => {
+    await ensurePlantUml();
+    return new Promise<string>((resolve, reject) => {
+      window.__plantuml?.renderToString(source.split(/\r\n|\r|\n/), resolve, (message) =>
+        reject(new Error(message)),
+      );
+    });
+  };
+  const result = plantUmlQueue.then(render, render);
+  plantUmlQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+/** Draws PlantUML fences locally while retaining their source for serialization. */
+export async function renderPlantUml(root: ParentNode): Promise<void> {
+  const blocks = Array.from(root.querySelectorAll<HTMLElement>(".plantuml")).filter(
+    (block) => !block.hasAttribute("data-processed") && isRevealed(block),
+  );
+  for (const block of blocks) {
+    const source = block.getAttribute("data-plantuml-src") ?? block.textContent ?? "";
+    block.setAttribute("data-plantuml-src", source);
+    try {
+      block.innerHTML = await renderPlantUmlSource(source);
+      block.removeAttribute("data-render-error");
+      block.setAttribute("data-processed", "true");
+    } catch {
+      block.textContent = source;
+      block.setAttribute("data-render-error", "true");
+    }
+  }
+}
+
+/** Draws both diagram languages supported by the editor. */
+export async function renderDiagrams(root: ParentNode): Promise<void> {
+  await Promise.all([renderPlantUml(root), renderMermaid(root)]);
+}
+
 /**
  * Draws deferred diagrams when their container opens: a tab switch flips a
  * radio (change bubbles), a call-out unfolds its details (toggle does not
@@ -78,12 +162,12 @@ export async function renderMermaid(root: ParentNode): Promise<void> {
  * when every visible diagram is already drawn.
  */
 export function watchMermaidReveal(root: HTMLElement): void {
-  const redraw = (): void => void renderMermaid(root);
+  const redraw = (): void => void renderDiagrams(root);
   root.addEventListener("change", redraw);
   root.addEventListener("toggle", redraw, true);
 }
 
-/** Redraws the diagrams already on screen: they carry the colours of the old scheme. */
+/** Redraws Mermaid diagrams already on screen: their SVG carries the old theme colours. */
 export async function reRenderMermaidTheme(root: ParentNode): Promise<void> {
   const drawn = Array.from(root.querySelectorAll<HTMLElement>(".mermaid[data-processed]"));
   if (drawn.length === 0) {

@@ -270,10 +270,20 @@ function buildComponents(): ComponentDef[] {
     },
     {
       id: "mermaid",
-      label: t("Mermaid diagram"),
+      label: t("Diagram"),
       category: t("Blocks"),
       icon: "type-hierarchy",
       fields: [
+        {
+          name: "language",
+          label: t("Language"),
+          type: "select",
+          default: "mermaid",
+          options: [
+            { value: "mermaid", label: "Mermaid" },
+            { value: "plantuml", label: "PlantUML" },
+          ],
+        },
         {
           name: "kind",
           label: t("Type"),
@@ -286,10 +296,17 @@ function buildComponents(): ComponentDef[] {
             { value: "state", label: t("States") },
             { value: "gantt", label: t("Gantt") },
             { value: "pie", label: t("Pie") },
+            { value: "activity", label: t("Activity") },
+            { value: "component", label: t("Components") },
           ],
         },
       ],
-      generate: (v) => `\`\`\`mermaid\n${mermaidTemplate(str(v.kind))}\n\`\`\`\n`,
+      generate: (v) => {
+        const language = v.language === "plantuml" ? "plantuml" : "mermaid";
+        const body =
+          language === "plantuml" ? plantUmlTemplate(str(v.kind)) : mermaidTemplate(str(v.kind));
+        return `\`\`\`${language}\n${body}\n\`\`\`\n`;
+      },
     },
     {
       id: "math",
@@ -452,5 +469,22 @@ function mermaidTemplate(kind: string): string {
       return `pie title ${t("Shares")}\n  "A" : 40\n  "B" : 60`;
     default:
       return `flowchart TD\n  A[${t("Start")}] --> B{${t("Condition")}}\n  B -->|${t("Yes")}| C[${t("Done")}]\n  B -->|${t("No")}| A`;
+  }
+}
+
+function plantUmlTemplate(kind: string): string {
+  switch (kind) {
+    case "class":
+      return "@startuml\nclass Animal {\n  +int age\n  +run()\n}\n@enduml";
+    case "state": {
+      const active = t("Active");
+      return `@startuml\n[*] --> ${active}\n${active} --> [*]\n@enduml`;
+    }
+    case "activity":
+      return `@startuml\nstart\n:${t("Task")};\nif (${t("Condition")}?) then (${t("Yes")})\n  :${t("Done")};\nelse (${t("No")})\n  :${t("Task")};\nendif\nstop\n@enduml`;
+    case "component":
+      return "@startuml\n[Client] --> [API]\n[API] --> [Database]\n@enduml";
+    default:
+      return `@startuml\nAlice -> Bob: ${t("Hi")}\nBob --> Alice: ${t("Reply")}\n@enduml`;
   }
 }

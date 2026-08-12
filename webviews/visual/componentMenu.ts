@@ -172,7 +172,7 @@ function rawInsertItems(): QuickItem[] {
     {
       id: "diagram",
       label: "Diagrams",
-      hint: t("Mermaid diagram"),
+      hint: t("Mermaid or PlantUML diagram"),
       icon: "graph-outline",
       key: { alt: true, key: "M" },
       run: () => openMermaidInsert(),
@@ -388,7 +388,7 @@ function quickInsertItems(): QuickItem[] {
         `=== "${t("Tab {0}", 1)}"\n\n    ${t("Content {0}", 1)}\n\n=== "${t("Tab {0}", 2)}"\n\n    ${t("Content {0}", 2)}`,
       ),
     },
-    { label: t("Mermaid diagram"), run: () => openMermaidInsert() },
+    { label: t("Diagram"), run: () => openMermaidInsert() },
     { label: t("Formula (block)"), run: mdInsert("$$\nE = mc^2\n$$") },
     { label: t("Other components…"), hint: t("forms"), run: () => requestComponentPanel() },
   ];

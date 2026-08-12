@@ -64,6 +64,7 @@ export function isInlineCode(el: Element): boolean {
     el.classList.contains("highlight") &&
     el.getAttribute("data-block-type") === "code" &&
     !el.classList.contains("mermaid") &&
+    !el.classList.contains("plantuml") &&
     !el.hasAttribute("data-fence-pristine")
   );
 }
