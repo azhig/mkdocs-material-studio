@@ -17,7 +17,7 @@ npm run package    # production build of the bundles
 its own, and `test/unit/makefile.test.ts` checks that it never falls behind
 `package.json`, which it had already done once.
 
-`F5` launches the Extension Development Host. Open an MkDocs project in it — for example, `samples/demo` — and invoke the preview or the visual editor.
+`F5` launches the Extension Development Host. Open an MkDocs project in it — for example, `samples/demo` — and invoke the preview or the visual editor. `samples/monorepo` is the other shape worth checking by hand: a site whose nav is `!include` entries, where the pages, the `docs_dir` and the stylesheet of a section all live beside its own config (`src/core/monorepoParse.ts` has the rules, `monorepo.ts` reads the files).
 
 Building the VSIX:
 

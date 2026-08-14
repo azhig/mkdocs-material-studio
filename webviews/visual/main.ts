@@ -188,6 +188,7 @@ import {
 } from "./tables";
 import { decorateCodeNav } from "../shared/codeNav";
 import {
+  keepHeaderReadable,
   renderSiteHeader,
   renderSiteNav,
   type SiteChromeData,
@@ -330,9 +331,15 @@ window.addEventListener("message", (e: MessageEvent) => {
         "markdown",
       );
       break;
-    case "extraCss":
+    case "extraCss": {
       applyExtraCss(String(msg.css), "vExtraCss");
+      // The project's stylesheet has the last word on the header colors.
+      const head = document.getElementById("vhead");
+      if (head) {
+        keepHeaderReadable(head);
+      }
       break;
+    }
     case "imageSaved":
       onImageSaved(Number(msg.token), String(msg.relPath));
       break;

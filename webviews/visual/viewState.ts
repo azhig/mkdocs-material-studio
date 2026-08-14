@@ -10,6 +10,7 @@ import { doc } from "./editorCore";
 import { t } from "../shared/i18n";
 import { reRenderMermaidTheme } from "../shared/mermaid";
 import { effectiveScheme, initScheme, type Scheme } from "../shared/scheme";
+import { keepHeaderReadable } from "../shared/siteChrome";
 
 /** The webview's own little store — the only thing the view needs from outside. */
 export interface ViewHost {
@@ -63,7 +64,14 @@ export function restoreViewState(): void {
   }
   initScheme(
     {
-      afterApply: syncViewButtons,
+      afterApply: () => {
+        syncViewButtons();
+        // Each scheme carries its own header colors — the ink is judged again.
+        const head = document.getElementById("vhead");
+        if (head) {
+          keepHeaderReadable(head);
+        }
+      },
       onSchemeChange: () => void reRenderMermaidTheme(doc()),
       persist: (override) => {
         themeOverride = override;

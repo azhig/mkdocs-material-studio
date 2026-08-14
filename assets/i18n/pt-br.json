@@ -1,4 +1,5 @@
 {
+  "“{0}” is written in {1}. Open that config to change it.": "“{0}” está definido em {1}. Abra essa configuração para alterá-lo.",
   "(untitled)": "(sem título)",
   "API reference (mkdocstrings)": "Referência da API (mkdocstrings)",
   "Abbreviation": "Abreviatura",

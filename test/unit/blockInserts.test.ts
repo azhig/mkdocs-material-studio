@@ -54,7 +54,12 @@ async function fresh(): Promise<Harness> {
     insertPoint: () => ({ line: 0, indent: "" }),
     insertMarkdownBlock: (template) => state.inserted.push(template),
     popupAnchor: () => anchor,
-    blockByStart: () => undefined,
+    // The real editor looks a block up by the line it starts on — an admonition
+    // changing its type is found again this way after an answer replaced it.
+    blockByStart: (start) =>
+      Array.from(docEl.querySelectorAll("[data-src-line]")).find(
+        (el) => Number(el.getAttribute("data-src-line")) === start,
+      ),
     caretInto: () => {},
     pickFile: () => Promise.resolve(state.pickedFile),
     linkSuggestions: () => [],

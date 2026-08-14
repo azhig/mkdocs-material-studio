@@ -97,6 +97,9 @@ export class TreeController {
   }
 
   private async newPage(node?: NavNode): Promise<void> {
+    if (belongsToInclude(node)) {
+      return;
+    }
     const project = node?.project ?? (await this.firstProject());
     if (!project) {
       return;
@@ -132,6 +135,9 @@ export class TreeController {
   }
 
   private async newSection(node?: NavNode): Promise<void> {
+    if (belongsToInclude(node)) {
+      return;
+    }
     const project = node?.project ?? (await this.firstProject());
     if (!project) {
       return;
@@ -147,7 +153,7 @@ export class TreeController {
   }
 
   private async rename(node?: NavNode): Promise<void> {
-    if (!node?.navPath) {
+    if (belongsToInclude(node) || !node?.navPath) {
       return;
     }
     const next = await vscode.window.showInputBox({ prompt: t("New title"), value: node.title });
@@ -158,7 +164,7 @@ export class TreeController {
   }
 
   private async delete(node?: NavNode): Promise<void> {
-    if (!node) {
+    if (!node || belongsToInclude(node)) {
       return;
     }
     if (node.type === "loose" && node.fileUri) {
@@ -193,6 +199,20 @@ export class TreeController {
       void vscode.window.showTextDocument(project.configFile);
     }
   }
+}
+
+/**
+ * An entry of an `!include`d config: it is not a line of the nav being edited,
+ * so every command that writes nav says where to go instead of doing nothing.
+ */
+function belongsToInclude(node: NavNode | undefined): boolean {
+  if (node?.includedFrom === undefined) {
+    return false;
+  }
+  void vscode.window.showInformationMessage(
+    t("“{0}” is written in {1}. Open that config to change it.", node.title, node.includedFrom),
+  );
+  return true;
 }
 
 function titleFromPath(rel: string): string {

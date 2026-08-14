@@ -3,6 +3,12 @@ import * as path from "node:path";
 import type { ProjectService, MkdocsProject } from "../core/projectService";
 import { readMkdocsConfig } from "../core/mkdocsConfig";
 import type { NavItem } from "../core/mkdocsConfigParse";
+import {
+  collectSections,
+  includeTargetOf,
+  resolveSectionPath,
+  type MonorepoSection,
+} from "../core/monorepo";
 import type { NavPath } from "../core/navEditor";
 import { t } from "../core/i18n";
 import { getLogger } from "../util/logger";
@@ -16,6 +22,13 @@ export interface NavNode {
   fileUri?: vscode.Uri;
   children?: NavNode[];
   project: MkdocsProject;
+  /**
+   * The included config this entry is written in (`lib/mkdocs.yml`), for the
+   * contents of an `!include` section. Such an entry has no navPath — editing it
+   * from here would write to the wrong file — and this is what lets the commands
+   * say so instead of doing nothing.
+   */
+  includedFrom?: string;
 }
 
 const NAV_MIME = "application/vnd.code.tree.mkdocsview.nav";
@@ -91,22 +104,31 @@ export class MkdocsTreeProvider
   private async buildRoot(project: MkdocsProject): Promise<NavNode[]> {
     let navItems: NavItem[] | undefined;
     let docsDir = "docs";
+    let sections = new Map<string, MonorepoSection>();
     try {
       const { config } = await readMkdocsConfig(project.configFile);
       navItems = config.nav;
       docsDir = config.docsDir;
+      sections = await collectSections(project, config);
     } catch (err) {
       getLogger().warn(`tree: failed to read the config: ${String(err)}`);
     }
 
     const docsRoot = vscode.Uri.joinPath(project.root, docsDir);
+    const fileOf = (rel: string): vscode.Uri =>
+      vscode.Uri.joinPath(project.root, resolveSectionPath(rel, docsDir, [...sections.values()]));
     const referenced = new Set<string>();
     const nodes = navItems
-      ? navItems.map((item, i) => this.toNode(item, [i], docsRoot, project, referenced))
+      ? navItems.map((item, i) => this.toNode(item, [i], fileOf, project, sections, referenced))
       : [];
 
-    // Files that did not make it into nav.
+    // Files that did not make it into nav — the root docs_dir and, in a monorepo,
+    // each section's own, named the way the nav names them.
     const allMd = await this.listMarkdown(docsRoot);
+    for (const section of sections.values()) {
+      const own = await this.listMarkdown(vscode.Uri.joinPath(project.root, section.docsDir));
+      allMd.push(...own.map((rel) => `${section.prefix}/${rel}`));
+    }
     const loose = allMd.filter((rel) => !referenced.has(rel));
     if (loose.length > 0) {
       nodes.push({
@@ -116,7 +138,7 @@ export class MkdocsTreeProvider
         children: loose.map((rel) => ({
           type: "loose" as const,
           title: rel,
-          fileUri: vscode.Uri.joinPath(docsRoot, rel),
+          fileUri: fileOf(rel),
           project,
         })),
       });
@@ -127,17 +149,37 @@ export class MkdocsTreeProvider
   private toNode(
     item: NavItem,
     navPath: NavPath,
-    docsRoot: vscode.Uri,
+    fileOf: (rel: string) => vscode.Uri,
     project: MkdocsProject,
+    sections: Map<string, MonorepoSection>,
     referenced: Set<string>,
   ): NavNode {
+    const included = includeTargetOf(item);
+    if (included !== undefined) {
+      const section = sections.get(included);
+      for (const rel of pagePaths(section?.nav ?? [])) {
+        referenced.add(rel);
+      }
+      return {
+        type: "section",
+        title: item.title ?? section?.prefix ?? included,
+        // The entry itself lives in this nav and may be moved; what is inside it
+        // does not — those lines belong to the included config, and writing them
+        // back here would edit the wrong file.
+        navPath,
+        project,
+        children: (section?.nav ?? []).map((child) =>
+          this.sectionNode(child, fileOf, project, included),
+        ),
+      };
+    }
     if (item.kind === "page") {
       referenced.add(item.path.replace(/\\/g, "/"));
       return {
         type: "page",
         title: item.title ?? item.path,
         navPath,
-        fileUri: vscode.Uri.joinPath(docsRoot, item.path),
+        fileUri: fileOf(item.path),
         project,
       };
     }
@@ -147,7 +189,34 @@ export class MkdocsTreeProvider
       navPath,
       project,
       children: item.children.map((child, i) =>
-        this.toNode(child, [...navPath, i], docsRoot, project, referenced),
+        this.toNode(child, [...navPath, i], fileOf, project, sections, referenced),
+      ),
+    };
+  }
+
+  /** A node of an included config: shown and opened, but not moved from here. */
+  private sectionNode(
+    item: NavItem,
+    fileOf: (rel: string) => vscode.Uri,
+    project: MkdocsProject,
+    includedFrom: string,
+  ): NavNode {
+    if (item.kind === "page") {
+      return {
+        type: "page",
+        title: item.title ?? item.path,
+        fileUri: fileOf(item.path),
+        project,
+        includedFrom,
+      };
+    }
+    return {
+      type: "section",
+      title: item.title,
+      project,
+      includedFrom,
+      children: item.children.map((child) =>
+        this.sectionNode(child, fileOf, project, includedFrom),
       ),
     };
   }
@@ -220,4 +289,11 @@ export class MkdocsTreeProvider
     const rel = path.relative(project.docsDir.fsPath, uri.fsPath).replace(/\\/g, "/");
     return rel.startsWith("..") ? undefined : rel;
   }
+}
+
+/** Page paths of a nav, sections included — what counts as “already in nav”. */
+function pagePaths(items: NavItem[]): string[] {
+  return items.flatMap((item) =>
+    item.kind === "section" ? pagePaths(item.children) : [item.path.replace(/\\/g, "/")],
+  );
 }

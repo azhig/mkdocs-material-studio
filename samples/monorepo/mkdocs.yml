@@ -1,0 +1,30 @@
+# A monorepo site: the nav of this config is two `!include` entries, and each of
+# them brings in a config with pages, a docs_dir and a stylesheet of its own
+# (mkdocs-monorepo-plugin). Opening any page of a section here has to show the
+# tabs of the whole site, the panel of that section and the section's styles.
+site_name: Monorepo Docs
+site_description: Two sections pulled in with !include
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+  palette:
+    - scheme: default
+      primary: white
+      accent: indigo
+    - scheme: slate
+      primary: white
+      accent: indigo
+
+plugins:
+  - monorepo
+
+nav:
+  - Home: index.md
+  - Library: "!include ./lib/mkdocs.yml"
+  - Tools: "!include ./tools/mkdocs.yml"
+
+# Written with the section prefix; the file itself lives in lib/docs/stylesheets/.
+extra_css:
+  - lib/stylesheets/extra.css

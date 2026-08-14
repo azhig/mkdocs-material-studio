@@ -79,6 +79,13 @@ navigation” section — pages in `docs/` that `nav` does not mention. Creating
 renaming, deleting and dragging pages there edits `mkdocs.yml` surgically:
 comments and formatting are preserved.
 
+A nav entry of the form `Library: '!include ./lib/mkdocs.yml'`
+(mkdocs-monorepo-plugin) is followed: the included config becomes a section whose
+pages come from its own `docs_dir`, its `site_name` is their URL prefix, and an
+`extra_css` entry written as `lib/stylesheets/extra.css` is read from
+`lib/docs/stylesheets/`. Opening a page of a section shows the whole site around
+it, not just that section.
+
 ### `mkdocs.yml` without writing YAML
 
 Tabs _General / Theme / Features / Plugins / Extensions_ — fields, swatches of

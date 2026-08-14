@@ -25,6 +25,13 @@ import {
   type SiteNode,
 } from "./siteNavBuild";
 import type { MkdocsProject } from "./projectService";
+import {
+  collectSections,
+  expandIncludes,
+  sectionFor,
+  sectionPathOf,
+  type MonorepoSection,
+} from "./monorepo";
 import { getLogger } from "../util/logger";
 import { iconPackFor } from "./extensionIcons";
 
@@ -87,6 +94,12 @@ export interface ChromeScope {
   pagesRoot: vscode.Uri;
   project?: MkdocsProject;
   config?: MkdocsConfig;
+  /**
+   * Configs the nav includes (mkdocs-monorepo-plugin), by config path. Empty for
+   * an ordinary project — every path below then resolves against docs_dir alone,
+   * exactly as before.
+   */
+  sections: Map<string, MonorepoSection>;
 }
 
 /**
@@ -101,15 +114,21 @@ export async function chromeScope(
   if (project) {
     try {
       const { config } = await readMkdocsConfig(project.configFile);
-      return { root: project.root, pagesRoot: docsRootOf(project, config), project, config };
+      return {
+        root: project.root,
+        pagesRoot: docsRootOf(project, config),
+        project,
+        config,
+        sections: await collectSections(project, config),
+      };
     } catch (err) {
       getLogger().warn(`Navigation: failed to read the config — ${String(err)}`);
-      return { root: project.root, pagesRoot: project.root, project };
+      return { root: project.root, pagesRoot: project.root, project, sections: new Map() };
     }
   }
   const folder =
     vscode.workspace.getWorkspaceFolder(doc)?.uri ?? vscode.Uri.file(path.dirname(doc.fsPath));
-  return { root: folder, pagesRoot: folder };
+  return { root: folder, pagesRoot: folder, sections: new Map() };
 }
 
 export async function buildSiteChrome(
@@ -123,8 +142,12 @@ export async function buildSiteChrome(
   }
   const docsRoot = scope.pagesRoot;
   const files = await listMarkdown(docsRoot.fsPath);
-  const wanted = config.nav ? navPagePaths(config.nav) : files;
-  const pages = await readPages(docsRoot.fsPath, wanted);
+  // In a monorepo the pages of a section live outside the root docs_dir and the
+  // nav addresses them through the section prefix — every read goes through
+  // pageUri, which knows where each prefix really points.
+  const nav = config.nav ? expandIncludes(config.nav, scope.sections) : undefined;
+  const wanted = nav ? navPagePaths(nav) : files;
+  const pages = await readPages(scope, wanted);
   const titleOf = (rel: string): string | undefined => pages.get(rel)?.title ?? undefined;
 
   return {
@@ -136,7 +159,7 @@ export async function buildSiteChrome(
     repoUrl: config.repoUrl,
     repoName: config.repoUrl ? (config.repoName ?? hostLabel(config.repoUrl)) : undefined,
     tabs: config.theme.features?.includes("navigation.tabs") === true,
-    nav: config.nav ? navFromConfig(config.nav, titleOf) : navFromFiles(files, titleOf),
+    nav: nav ? navFromConfig(nav, titleOf) : navFromFiles(files, titleOf),
   };
 }
 
@@ -157,7 +180,7 @@ async function buildFolderChrome(scope: ChromeScope): Promise<SiteChromeData> {
   // Tables of contents are read first: the read limit is lower than the index
   // size, and it is exactly they that define the order inside a directory — they
   // must not be lost to the limit.
-  const pages = await readPages(root, [
+  const pages = await readPages(scope, [
     ...files.filter(isEntryPage),
     ...files.filter((rel) => !isEntryPage(rel)),
   ]);
@@ -179,15 +202,30 @@ function docsRootOf(project: MkdocsProject, config: MkdocsConfig): vscode.Uri {
     : vscode.Uri.joinPath(project.root, config.docsDir);
 }
 
-/** Document path relative to the pages directory — the webview marks the active page by it. */
+/** Document path in the nav's address space — the webview marks the active page by it. */
 export function activePagePath(scope: ChromeScope, uri: vscode.Uri): string | undefined {
   const rel = path.relative(scope.pagesRoot.fsPath, uri.fsPath);
-  return rel.startsWith("..") || path.isAbsolute(rel) ? undefined : rel.split(path.sep).join("/");
+  if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
+    return rel.split(path.sep).join("/");
+  }
+  // Outside the root docs_dir the page can still belong to an included section,
+  // and there the nav knows it by the section prefix.
+  const fromRoot = path.relative(scope.root.fsPath, uri.fsPath);
+  if (fromRoot.startsWith("..") || path.isAbsolute(fromRoot)) {
+    return undefined;
+  }
+  return sectionPathOf(fromRoot.split(path.sep).join("/"), [...scope.sections.values()]);
 }
 
 /** Page file for a path coming from the navigation. */
 export function pageUri(scope: ChromeScope, relPath: string): vscode.Uri {
-  return vscode.Uri.joinPath(scope.pagesRoot, relPath);
+  const rel = relPath.replace(/\\/g, "/");
+  const section = sectionFor(rel, [...scope.sections.values()]);
+  if (!section) {
+    return vscode.Uri.joinPath(scope.pagesRoot, rel);
+  }
+  const inSection = rel.slice(section.prefix.length).replace(/^\//, "");
+  return vscode.Uri.joinPath(scope.root, section.docsDir, inSection);
 }
 
 /**
@@ -198,7 +236,9 @@ export function pageUri(scope: ChromeScope, relPath: string): vscode.Uri {
  */
 export function watchSiteChrome(root: vscode.Uri, reload: () => void): vscode.Disposable {
   const configWatcher = vscode.workspace.createFileSystemWatcher(
-    new vscode.RelativePattern(root, "mkdocs.{yml,yaml}"),
+    // Not just the root config: in a monorepo the nav of a section lives in the
+    // config the root one includes, and renaming an entry there has to show up too.
+    new vscode.RelativePattern(root, "**/mkdocs.{yml,yaml}"),
   );
   const pagesWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(root, "**/*.{md,markdown}"),
@@ -335,10 +375,10 @@ interface PageInfo {
  * Reads the pages for their title and links — in a single pass over the file and
  * with an mtime-keyed cache: both come from one and the same text.
  */
-async function readPages(root: string, rels: string[]): Promise<Map<string, PageInfo>> {
+async function readPages(scope: ChromeScope, rels: string[]): Promise<Map<string, PageInfo>> {
   const pages = new Map<string, PageInfo>();
   for (const rel of rels.slice(0, MAX_TITLE_FILES)) {
-    const file = path.join(root, rel);
+    const file = pageUri(scope, rel).fsPath;
     try {
       const stat = await fs.stat(file);
       const cached = pageCache.get(file);

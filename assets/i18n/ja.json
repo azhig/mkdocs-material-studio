@@ -1,4 +1,5 @@
 {
+  "“{0}” is written in {1}. Open that config to change it.": "「{0}」は {1} に記述されています。変更するにはその設定ファイルを開いてください。",
   "(untitled)": "(無題)",
   "API reference (mkdocstrings)": "API リファレンス (mkdocstrings)",
   "Abbreviation": "略語",

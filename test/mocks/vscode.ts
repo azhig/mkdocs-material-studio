@@ -160,6 +160,9 @@ export class TreeItem {
 
 export const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 } as const;
 export const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 } as const;
+
+/** The values VS Code uses in workspace.fs.readDirectory. */
+export const FileType = { Unknown: 0, File: 1, Directory: 2, SymbolicLink: 64 } as const;
 export const ViewColumn = { Active: -1, Beside: -2, One: 1, Two: 2 } as const;
 export const TextEditorRevealType = {
   Default: 0,
@@ -289,6 +292,8 @@ interface Recorded {
   inputBoxAnswers: (string | undefined)[];
   /** Answer for window.showWarningMessage. */
   warningAnswer: string | undefined;
+  /** Messages passed to window.showInformationMessage. */
+  infos: string[];
   /** Panels handed out by window.createWebviewPanel, oldest first. */
   createdPanels: unknown[];
 }
@@ -304,6 +309,7 @@ export const __recorded: Recorded = {
   executedCommands: [],
   openedExternal: [],
   warnings: [],
+  infos: [],
   errors: [],
   refuseEdits: false,
   changeEvent: "before",
@@ -315,6 +321,7 @@ export const __recorded: Recorded = {
 
 const settings = new Map<string, unknown>();
 let folders: { uri: Uri; name: string; index: number }[] = [];
+let foundFiles: Uri[] = [];
 
 export const __onDidChangeTextDocument = new EventEmitter<{
   document: FakeTextDocument;
@@ -332,6 +339,7 @@ export function __reset(): void {
   __recorded.executedCommands = [];
   __recorded.openedExternal = [];
   __recorded.warnings = [];
+  __recorded.infos = [];
   __recorded.errors = [];
   __recorded.refuseEdits = false;
   __recorded.changeEvent = "before";
@@ -340,6 +348,7 @@ export function __reset(): void {
   __recorded.warningAnswer = undefined;
   __recorded.createdPanels = [];
   panelFactory = undefined;
+  foundFiles = [];
 }
 
 export function __setSetting(key: string, value: unknown): void {
@@ -348,6 +357,11 @@ export function __setSetting(key: string, value: unknown): void {
 
 export function __setWorkspaceFolders(uris: Uri[]): void {
   folders = uris.map((uri, index) => ({ uri, name: path.basename(uri.fsPath), index }));
+}
+
+/** What workspace.findFiles answers — the configs a test wants discovered. */
+export function __setFoundFiles(uris: Uri[]): void {
+  foundFiles = uris;
 }
 
 /** Fires onDidChangeConfiguration for the given sections. */
@@ -396,7 +410,7 @@ export const workspace = {
   },
 
   findFiles(): Promise<Uri[]> {
-    return Promise.resolve([]);
+    return Promise.resolve(foundFiles);
   },
 
   openTextDocument(uri: Uri): Promise<FakeTextDocument> {
@@ -443,6 +457,11 @@ export const workspace = {
     async readFile(uri: Uri): Promise<Uint8Array> {
       return new Uint8Array(await fs.readFile(uri.fsPath));
     },
+    /** Entries as VS Code reports them: [name, FileType]. Throws for a missing directory. */
+    async readDirectory(uri: Uri): Promise<[string, number][]> {
+      const entries = await fs.readdir(uri.fsPath, { withFileTypes: true });
+      return entries.map((e) => [e.name, e.isDirectory() ? FileType.Directory : FileType.File]);
+    },
     /** Throws for something that is not there — the provider relies on that. */
     async stat(uri: Uri): Promise<{ type: number; size: number }> {
       const s = await fs.stat(uri.fsPath);
@@ -480,6 +499,10 @@ export const window = {
     };
   },
 
+  showInformationMessage(message: string): Promise<undefined> {
+    __recorded.infos.push(message);
+    return Promise.resolve(undefined);
+  },
   showWarningMessage(message: string): Promise<string | undefined> {
     __recorded.warnings.push(message);
     return Promise.resolve(__recorded.warningAnswer);

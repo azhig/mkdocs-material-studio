@@ -1,4 +1,5 @@
 {
+  "“{0}” is written in {1}. Open that config to change it.": "“{0}” 定义在 {1} 中。请打开该配置文件进行修改。",
   "(untitled)": "(无标题)",
   "API reference (mkdocstrings)": "API 参考 (mkdocstrings)",
   "Abbreviation": "缩写",

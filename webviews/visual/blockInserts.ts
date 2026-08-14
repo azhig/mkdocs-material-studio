@@ -16,9 +16,10 @@ import {
   markDirty,
   rangeOf,
   scheduleSync,
-  sendSync,
+  sendBuiltSync,
   setAfterSync,
 } from "./editorCore";
+import type { SyncEdit } from "./syncModel";
 import { buildFenceInfo, LANGUAGES } from "./codeFence";
 // What a block is written back as decides what it is worth writing in the first
 // place: a template that differs from the serializer's output would be rewritten
@@ -814,19 +815,44 @@ function focusFirstCardAt(anchorLine: number): void {
   }
 }
 
-/** Changes the type/collapsibility through a pinpoint edit of the marker line in the source. */
+/**
+ * Changes the type/collapsibility through a pinpoint edit of the marker line in
+ * the source.
+ *
+ * The batch is built when it is about to be sent, not here: clicking a second
+ * type while the answer to the first is still travelling used to send line
+ * numbers and a document version the file had already moved past, and such a
+ * batch is refused whole — the second click did nothing, and the call-out
+ * silently stayed the colour the first one had given it.
+ */
 export function applyAdmonitionChange(
   el: Element,
   next: { type?: string; collapse?: Collapse },
 ): void {
+  const at = rangeOf(el).start;
+  document.getSelection()?.removeAllRanges();
+  sendBuiltSync(() => buildAdmonitionEdit(at, next));
+}
+
+/** The marker line as it will be after the change — read from the current text. */
+function buildAdmonitionEdit(
+  at: number,
+  next: { type?: string; collapse?: Collapse },
+): SyncEdit[] | undefined {
+  // The element is looked up again: an answer that arrived in between replaced
+  // the block, and the node the click was made on is no longer in the document.
+  const el = host.blockByStart(at);
+  if (!el) {
+    return undefined;
+  }
   const { start, end } = rangeOf(el);
   const lines = docLines().slice(start, end);
   if (lines.length === 0) {
-    return;
+    return undefined;
   }
   const m = /^(\s*)(!!!|\?\?\?\+?)\s+(.*)$/.exec(lines[0]);
   if (!m) {
-    return;
+    return undefined;
   }
   const indent = m[1];
   const rest = m[3].trim();
@@ -845,8 +871,7 @@ export function applyAdmonitionChange(
   const marker = collapse === "expanded" ? "???+" : collapse === "collapsed" ? "???" : "!!!";
   const titlePart = title !== null ? ` "${title}"` : "";
   const newLines = [`${indent}${marker} ${tokens.join(" ")}${titlePart}`, ...lines.slice(1)];
-  document.getSelection()?.removeAllRanges();
-  sendSync([{ start, end, text: newLines.join("\n") + "\n" }]);
+  return [{ start, end, text: newLines.join("\n") + "\n" }];
 }
 
 // ---------------------------------------------------------------------------

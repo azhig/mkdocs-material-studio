@@ -80,4 +80,16 @@ describe("an icon out of the pack", () => {
     expect(pack.names()).toEqual({});
     pack.dispose();
   });
+
+  it("says what went wrong, so a broken install is not mistaken for a page without icons", () => {
+    const pack = openIconPack(path.join(root, "nowhere"));
+    expect(pack.problem).toMatch(/icons\.index\.json.*icons\.pack/s);
+    pack.dispose();
+  });
+
+  it("says nothing when the pack is where it should be", () => {
+    const pack = openIconPack(root);
+    expect(pack.problem).toBeUndefined();
+    pack.dispose();
+  });
 });
