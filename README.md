@@ -166,6 +166,14 @@ Mermaid and PlantUML are rendered locally by browser-native JavaScript engines.
 Diagram source never leaves VS Code, and neither Java nor a network connection
 is required.
 
+Two things about PlantUML are worth knowing. The published site draws these
+fences with a plugin of its own (`plantuml-markdown`, `mkdocs-kroki` or
+similar) — the extension shows the picture whether or not the site is set up
+for it. And the bundled engine is the core one: sprite libraries (AWS, tupadr3,
+material), `<:emoji:>` and `<&openiconic>` icons are not part of it, and a
+diagram that is not in this release is answered with a “not supported” picture
+rather than an error.
+
 The extension does not run `mkdocs serve` and does not manage a server. To see
 the built site with search, plugins and `mkdocstrings`, run `mkdocs serve` in the
 terminal and open it in a browser.

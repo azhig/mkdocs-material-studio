@@ -108,7 +108,7 @@ import {
 } from "./blockHandle";
 import { initIconPicker, openIconPicker } from "./iconPicker";
 import { initMathDialog, openMathDialog } from "./mathDialog";
-import { initMermaidDialog, openMermaidDialog } from "./mermaidDialog";
+import { initMermaidDialog, openMermaidDialog, withDiagramLanguage } from "./mermaidDialog";
 import { hasActivePopup, onPopupClose } from "./popups";
 import {
   adoptText,
@@ -1121,9 +1121,7 @@ function openIslandEditor(el: HTMLElement): void {
       (code, nextLanguage) => {
         const cur = rangeOf(el); // the range could have shifted due to parallel edits
         const nextOpenLine =
-          nextLanguage === language
-            ? openLine
-            : openLine.replace(/^(\s*(?:`{3,}|~{3,})\s*)[\w+-]+/, `$1${nextLanguage}`);
+          nextLanguage === language ? openLine : withDiagramLanguage(openLine, nextLanguage);
         const fence = indentLines([nextOpenLine, ...code.split("\n"), closeLine], indent);
         document.getSelection()?.removeAllRanges();
         sendSync([{ start: cur.start, end: cur.end, text: fence.join("\n") + "\n" }]);

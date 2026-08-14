@@ -83,6 +83,13 @@ describe("htmlToMd: canonical round-trip", () => {
     expectRoundTrip("```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```\n");
   });
 
+  it("a diagram keeps the info string its author wrote", () => {
+    // `puml` is the same renderer under another name; rewriting it to the
+    // canonical one is a diff the author never asked for.
+    expectRoundTrip("```puml\n@startuml\nAlice -> Bob\n@enduml\n```\n");
+    expectRoundTrip('```mermaid title="Flow"\nflowchart TD\n  A --> B\n```\n');
+  });
+
   it("Material button (attrs)", () => {
     expectRoundTrip("[Read more](#){ .md-button }\n");
   });

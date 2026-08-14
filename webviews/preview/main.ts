@@ -9,7 +9,7 @@ import {
   applyExtraCss,
   initMermaid,
   renderDiagrams,
-  reRenderMermaidTheme,
+  reRenderDiagramTheme,
   watchMermaidReveal,
 } from "../shared/mermaid";
 import {
@@ -363,7 +363,7 @@ initScheme(
       // Each scheme carries its own header colors — the ink is judged again.
       keepHeaderReadable(siteHead);
     },
-    onSchemeChange: () => void reRenderMermaidTheme(content),
+    onSchemeChange: () => void reRenderDiagramTheme(content),
     persist: (override) => {
       const prev = vscodeApi.getState?.() ?? {};
       vscodeApi.setState?.({ ...prev, theme: override });

@@ -4,6 +4,36 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Diagrams
+
+- **Mermaid is drawn in the colours of the site**, taken from the palette in
+  `mkdocs.yml` — as Material itself draws it. The engine's own greys sat on the
+  page as a patch of a different hue (a node at #1F2020 against slate's #1E2129),
+  and the label of an edge carried a grey plate over the line it belonged to.
+- **A PlantUML diagram follows the page scheme**: on a dark page it is drawn in
+  dark mode instead of near-black ink on near-black background, and switching
+  the theme redraws it. Its own palette is left alone — that is what the
+  published site will draw — but the diagram now sits on the panel a code block
+  sits on, instead of floating on the page in a tone of its own.
+- **A PlantUML source with a mistake in it says so.** The engine reports one by
+  drawing a picture about it — “PlantUML version …, Syntax Error?” — which was
+  displayed as if it were the diagram the author wrote. It is now shown as an
+  error: the source stays readable and the parser's words are on the block.
+- A PlantUML diagram is drawn once and kept: a keystroke in the document used to
+  redraw every diagram on the page from scratch.
+- A diagram the engine refuses no longer looks like an ordinary code block — the
+  block is marked and the engine's own message is in its tooltip.
+- A runtime that fails to start now says so instead of leaving every diagram on
+  the page waiting for it forever, and a lost script is retried rather than
+  remembered as a failure for the lifetime of the panel.
+- The diagram component offers each renderer only the diagrams it draws, and
+  every type inserts its own: “Gantt” in PlantUML used to insert a sequence
+  diagram, and “Pie” a diagram PlantUML cannot draw at all.
+- ` ```puml ` and a fence with a title survive a round trip through the visual
+  editor — the language was rewritten to the canonical name and the title dropped.
+
 ## 0.2.0 — 2026-08-14
 
 ### Monorepo projects

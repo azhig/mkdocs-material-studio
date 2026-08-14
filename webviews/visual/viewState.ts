@@ -8,7 +8,7 @@
 
 import { doc } from "./editorCore";
 import { t } from "../shared/i18n";
-import { reRenderMermaidTheme } from "../shared/mermaid";
+import { reRenderDiagramTheme } from "../shared/mermaid";
 import { effectiveScheme, initScheme, type Scheme } from "../shared/scheme";
 import { keepHeaderReadable } from "../shared/siteChrome";
 
@@ -72,7 +72,7 @@ export function restoreViewState(): void {
           keepHeaderReadable(head);
         }
       },
-      onSchemeChange: () => void reRenderMermaidTheme(doc()),
+      onSchemeChange: () => void reRenderDiagramTheme(doc()),
       persist: (override) => {
         themeOverride = override;
         saveViewState();

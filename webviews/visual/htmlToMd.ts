@@ -236,17 +236,20 @@ function blockquoteLines(el: Element): string[] {
 
 /** markdown-it's default code_block (indented code) → a canonical fence. */
 function preLines(el: Element): string[] {
-  if (el.classList.contains("mermaid")) {
-    // After mermaid has rendered, textContent holds the SVG — the source is
-    // kept in data-mermaid-src (set by the editor before rendering).
-    const src = el.getAttribute("data-mermaid-src") ?? el.textContent ?? "";
+  const diagram = el.classList.contains("mermaid")
+    ? "mermaid"
+    : el.classList.contains("plantuml")
+      ? "plantuml"
+      : "";
+  if (diagram) {
+    // After the diagram has been drawn, textContent holds the SVG — the source
+    // is kept in data-{lang}-src (set by the editor before rendering).
+    const src = el.getAttribute(`data-${diagram}-src`) ?? el.textContent ?? "";
     const code = src.replace(/\n$/, "");
-    return [fenceFor(code) + "mermaid", ...code.split("\n"), fenceFor(code)];
-  }
-  if (el.classList.contains("plantuml")) {
-    const src = el.getAttribute("data-plantuml-src") ?? el.textContent ?? "";
-    const code = src.replace(/\n$/, "");
-    return [fenceFor(code) + "plantuml", ...code.split("\n"), fenceFor(code)];
+    // The author's own info string is the source of truth: ```puml must not come
+    // back as ```plantuml, and a title on the fence must not be dropped.
+    const info = el.getAttribute("data-fence-info") ?? diagram;
+    return [fenceFor(code) + info, ...code.split("\n"), fenceFor(code)];
   }
   const codeEl = el.querySelector(":scope > code");
   const code = ((codeEl ?? el).textContent ?? "").replace(/\n$/, "");

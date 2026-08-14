@@ -18,6 +18,15 @@ function strip(s: string): string {
   return s.replace(/\$\{?\d+(:[^}]*)?\}?/g, "");
 }
 
+/** The diagram types the form offers, per renderer. */
+function diagramKinds(): Record<string, Array<{ value: string; label: string }>> {
+  const field = getComponent("mermaid")?.fields.find((f) => f.name === "kind");
+  if (!field?.optionsBy) {
+    throw new Error("the diagram type field no longer depends on the language");
+  }
+  return field.optionsBy;
+}
+
 describe("component generators", () => {
   it("admonition — plain", () => {
     const out = gen("admonition", {
@@ -97,6 +106,34 @@ describe("component generators", () => {
     expect(out).toContain("```plantuml");
     expect(out).toContain("@startuml");
     expect(out).toContain("Alice -> Bob");
+  });
+
+  it("offers each renderer only the diagrams it draws", () => {
+    const kinds = diagramKinds();
+    // The bundled PlantUML answers a pie chart with “Diagram not supported by
+    // this release” — drawn as a valid SVG, so nothing downstream would notice.
+    expect(kinds.plantuml.map((o) => o.value)).not.toContain("pie");
+    expect(kinds.mermaid.map((o) => o.value)).toContain("pie");
+    // A Gantt chart is not @startuml in PlantUML, and it is not a mind map in Mermaid.
+    expect(gen("mermaid", { language: "plantuml", kind: "gantt" })).toContain("@startgantt");
+    expect(kinds.mermaid.map((o) => o.value)).not.toContain("mindmap");
+  });
+
+  it("gives every offered type a diagram of its own", () => {
+    // A type with no template of its own falls through to the default one, and
+    // the user gets a sequence diagram where they asked for a Gantt chart.
+    for (const [language, options] of Object.entries(diagramKinds())) {
+      const drawn = new Map<string, string>();
+      for (const option of options) {
+        const out = gen("mermaid", { language, kind: option.value });
+        const same = drawn.get(out);
+        expect(
+          same,
+          `${language}: “${option.value}” inserts the same as “${same}”`,
+        ).toBeUndefined();
+        drawn.set(out, option.value);
+      }
+    }
   });
 
   it("math — block and inline", () => {

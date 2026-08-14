@@ -25,6 +25,23 @@ sequenceDiagram
     Daemon-->>CLI: rendered report
 ```
 
+## The same story in PlantUML
+
+```plantuml
+@startuml
+participant CLI
+participant Daemon
+database Store
+CLI -> Daemon: report --since 24h
+Daemon -> Store: read windows
+Store --> Daemon: 288 rows
+Daemon --> CLI: rendered report
+@enduml
+```
+
+PlantUML is drawn by the engine bundled with the extension — no Java, no server
+and no network. The published site needs its own plugin for these fences.
+
 ## A picture from the repository
 
 ![The parts of Aurora and what flows between them](../assets/architecture.svg)

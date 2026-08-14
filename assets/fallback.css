@@ -56,11 +56,37 @@ body {
   text-align: center;
   background: transparent;
 }
+
+/* PlantUML draws in its own palette — neutral grey boxes that land on the
+   page's own colour as a patch of a different hue (and that is the palette the
+   published site will use too, so repainting them would move the preview away
+   from it). Instead the diagram gets the panel a code block sits on: the
+   picture stays the site's, and it sits on something that belongs to the page. */
+#content .plantuml:not([data-render-error]),
+#doc .plantuml:not([data-render-error]) {
+  background: var(--md-code-bg-color, rgba(0, 0, 0, 0.04));
+  border-radius: 0.2rem;
+  padding: 0.6rem 0;
+}
 #content .plantuml img,
 #doc .plantuml img {
   display: block;
   margin: 0 auto;
   max-width: 100%;
+}
+
+/* A diagram the engine refused. The source is shown instead of the picture, and
+   without a mark it reads as a plain code block — the reader has no way to tell
+   that something failed. The engine's own message is in the tooltip. */
+#content .plantuml[data-render-error],
+#doc .plantuml[data-render-error] {
+  text-align: left;
+  padding: 0.6em 0.8em;
+  /* Material's own “failure” red — it reads the same on both schemes. */
+  border-left: 3px solid #ff5252;
+  background: var(--md-code-bg-color, rgba(0, 0, 0, 0.04));
+  white-space: pre-wrap;
+  cursor: help;
 }
 
 /* Math. */

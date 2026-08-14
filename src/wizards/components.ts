@@ -26,6 +26,14 @@ export interface FieldDef {
   default?: string | number | boolean;
   placeholder?: string;
   help?: string;
+  /**
+   * The field whose value picks this one's options, with the options per value
+   * in `optionsBy`. The two diagram languages do not draw the same set of
+   * pictures: offering “Pie” for PlantUML meant silently inserting a sequence
+   * diagram instead.
+   */
+  dependsOn?: string;
+  optionsBy?: Record<string, FieldOption[]>;
 }
 
 export type FieldValues = Record<string, string | number | boolean>;
@@ -289,16 +297,9 @@ function buildComponents(): ComponentDef[] {
           label: t("Type"),
           type: "select",
           default: "flowchart",
-          options: [
-            { value: "flowchart", label: t("Flowchart") },
-            { value: "sequence", label: t("Sequence") },
-            { value: "class", label: t("Classes") },
-            { value: "state", label: t("States") },
-            { value: "gantt", label: t("Gantt") },
-            { value: "pie", label: t("Pie") },
-            { value: "activity", label: t("Activity") },
-            { value: "component", label: t("Components") },
-          ],
+          dependsOn: "language",
+          options: mermaidKinds(),
+          optionsBy: { mermaid: mermaidKinds(), plantuml: plantUmlKinds() },
         },
       ],
       generate: (v) => {
@@ -452,6 +453,36 @@ function range(n: number): number[] {
   return Array.from({ length: n }, (_, i) => i);
 }
 
+/**
+ * The diagram types each renderer actually draws. Verified against the bundled
+ * engines, not against their documentation: PlantUML answers a pie chart with
+ * “Diagram not supported by this release”, and it says so inside a perfectly
+ * valid SVG — nothing in the code would notice.
+ */
+function mermaidKinds(): FieldOption[] {
+  return [
+    { value: "flowchart", label: t("Flowchart") },
+    { value: "sequence", label: t("Sequence") },
+    { value: "class", label: t("Classes") },
+    { value: "state", label: t("States") },
+    { value: "er", label: t("Entities") },
+    { value: "gantt", label: t("Gantt") },
+    { value: "pie", label: t("Pie") },
+  ];
+}
+
+function plantUmlKinds(): FieldOption[] {
+  return [
+    { value: "sequence", label: t("Sequence") },
+    { value: "class", label: t("Classes") },
+    { value: "activity", label: t("Activity") },
+    { value: "state", label: t("States") },
+    { value: "component", label: t("Components") },
+    { value: "gantt", label: t("Gantt") },
+    { value: "mindmap", label: t("Mind map") },
+  ];
+}
+
 function mermaidTemplate(kind: string): string {
   switch (kind) {
     case "sequence":
@@ -463,6 +494,8 @@ function mermaidTemplate(kind: string): string {
       const active = t("Active");
       return `stateDiagram-v2\n  [*] --> ${active}\n  ${active} --> [*]`;
     }
+    case "er":
+      return "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ ITEM : contains";
     case "gantt":
       return `gantt\n  title ${t("Plan")}\n  section ${t("Stage")}\n  ${t("Task")} :a1, 2024-01-01, 7d`;
     case "pie":
@@ -484,6 +517,13 @@ function plantUmlTemplate(kind: string): string {
       return `@startuml\nstart\n:${t("Task")};\nif (${t("Condition")}?) then (${t("Yes")})\n  :${t("Done")};\nelse (${t("No")})\n  :${t("Task")};\nendif\nstop\n@enduml`;
     case "component":
       return "@startuml\n[Client] --> [API]\n[API] --> [Database]\n@enduml";
+    case "gantt": {
+      // PlantUML draws a Gantt chart under its own start tag, not inside @startuml.
+      const [stage, task] = [t("Stage"), t("Task")];
+      return `@startgantt\n[${stage}] lasts 7 days\n[${task}] lasts 10 days\n[${task}] starts at [${stage}]'s end\n@endgantt`;
+    }
+    case "mindmap":
+      return `@startmindmap\n* ${t("Plan")}\n** ${t("Stage")}\n** ${t("Task")}\n@endmindmap`;
     default:
       return `@startuml\nAlice -> Bob: ${t("Hi")}\nBob --> Alice: ${t("Reply")}\n@enduml`;
   }

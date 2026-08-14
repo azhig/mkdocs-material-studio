@@ -232,7 +232,12 @@
 
     <script>
       // Extension emulation: the same message protocol as PreviewPanelManager.
-      window.__mkdocsPreview = { mermaidUri: "/dist/webview/mermaid.js", nonce: "" };
+      window.__mkdocsPreview = {
+        mermaidUri: "/dist/webview/mermaid.js",
+        plantumlUri: "/dist/webview/plantuml.js",
+        plantumlVizUri: "/dist/webview/plantuml-viz.js",
+        nonce: "",
+      };
       const chrome = { header: false, nav: false, toc: false };
       let active = "reference/response.md";
       const data = {

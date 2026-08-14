@@ -13,7 +13,7 @@ declare const window: Window & {
     render: (id: string, code: string) => Promise<{ svg: string }>;
   };
 };
-import { ensureMermaid, renderPlantUmlSource } from "../shared/mermaid";
+import { ensureMermaid, mermaidConfig, renderPlantUmlSource } from "../shared/mermaid";
 import { closePopup, firstErrorLine } from "./popups";
 
 export interface MermaidDialogHost {
@@ -123,6 +123,20 @@ export function detectDiagramLanguage(
 
 function templates(language: DiagramLanguage): Array<{ id: string; label: string; code: string }> {
   return language === "plantuml" ? PLANTUML_TEMPLATES : MERMAID_TEMPLATES;
+}
+
+/**
+ * Rewrites the language of a fence's opening line when the dialog switched
+ * renderers, in both info-string forms Material accepts — ```` ```plantuml ````
+ * and ```` ```{ .plantuml title="…" } ````. Everything else on the line (the
+ * title, `.copy`, the tildes) is the author's and stays untouched.
+ */
+export function withDiagramLanguage(openLine: string, language: DiagramLanguage): string {
+  const braced = /^(\s*(?:`{3,}|~{3,})\s*\{\s*\.)[\w+-]+/;
+  if (braced.test(openLine)) {
+    return openLine.replace(braced, `$1${language}`);
+  }
+  return openLine.replace(/^(\s*(?:`{3,}|~{3,})\s*)[\w+-]*/, `$1${language}`);
 }
 
 let mermaidDlgSeq = 0;
@@ -281,11 +295,7 @@ export function openMermaidDialog(
     const id = `vmdlg${++mermaidDlgSeq}`;
     try {
       await ensureMermaid();
-      const scheme = document.body.getAttribute("data-md-color-scheme");
-      window.__mermaid?.initialize({
-        startOnLoad: false,
-        theme: scheme === "slate" ? "dark" : "default",
-      });
+      window.__mermaid?.initialize(mermaidConfig());
       const { svg } = (await window.__mermaid?.render(id, code)) ?? { svg: "" };
       if (!overlay.isConnected) {
         return; // the dialog was closed while the render was in flight
