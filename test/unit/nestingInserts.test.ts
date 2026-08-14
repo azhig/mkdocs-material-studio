@@ -522,6 +522,15 @@ function cross(names: string[], depth: number): string[][] {
 // ---------------------------------------------------------------------------
 
 const CN = Object.keys(CONTAINERS);
+/**
+ * These cases are matrices — every component into every nesting of every
+ * container — and each one renders and serializes a document. On a loaded
+ * machine they run past vitest's five seconds and fail having checked nothing,
+ * so they are given room. Nothing waits on the clock here: the number is a
+ * ceiling, not a delay.
+ */
+const MATRIX_TIMEOUT = 60_000;
+
 // Three deep takes a subset, otherwise the matrix explodes.
 const C3 = ["adm", "tabs2", "ul", "quote"];
 
@@ -531,20 +540,32 @@ describe("inserting a component with the caret inside another one", () => {
     ed = await makeEditor();
   });
 
-  it("into every container", async () => {
-    const { fails, count } = await runCases(ed, nested(cross(CN, 1)));
-    expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
-  });
+  it(
+    "into every container",
+    async () => {
+      const { fails, count } = await runCases(ed, nested(cross(CN, 1)));
+      expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
+    },
+    MATRIX_TIMEOUT,
+  );
 
-  it("into a container inside a container", async () => {
-    const { fails, count } = await runCases(ed, nested(cross(CN, 2)));
-    expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
-  });
+  it(
+    "into a container inside a container",
+    async () => {
+      const { fails, count } = await runCases(ed, nested(cross(CN, 2)));
+      expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
+    },
+    MATRIX_TIMEOUT,
+  );
 
-  it("three deep", async () => {
-    const { fails, count } = await runCases(ed, nested(cross(C3, 3)));
-    expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
-  });
+  it(
+    "three deep",
+    async () => {
+      const { fails, count } = await runCases(ed, nested(cross(C3, 3)));
+      expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
+    },
+    MATRIX_TIMEOUT,
+  );
 
   // The line under the caret is the item's marker (`- …`), so the level to nest
   // into is not the one the line starts at — it is one tab further in. Getting
@@ -905,23 +926,27 @@ describe("adding an inline element to a paragraph inside a container", () => {
     expect(roundTripFail(withGrid)).toBeNull();
   });
 
-  it("at every depth", async () => {
-    const places = [
-      ...nested(cross(CN, 1)),
-      ...nested(cross(["adm", "tabs2", "ul", "quote", "grid"], 2)),
-      ...nested(cross(["adm", "tabs", "ul"], 3)),
-    ];
-    const fails: string[] = [];
-    let count = 0;
-    for (const place of places) {
-      for (const comp of INLINE_COMPONENTS) {
-        count++;
-        const f = await inlineFail(ed, place.src, comp);
-        if (f) {
-          fails.push(`❌ ${comp.name} into ${place.name}\n${f}`);
+  it(
+    "at every depth",
+    async () => {
+      const places = [
+        ...nested(cross(CN, 1)),
+        ...nested(cross(["adm", "tabs2", "ul", "quote", "grid"], 2)),
+        ...nested(cross(["adm", "tabs", "ul"], 3)),
+      ];
+      const fails: string[] = [];
+      let count = 0;
+      for (const place of places) {
+        for (const comp of INLINE_COMPONENTS) {
+          count++;
+          const f = await inlineFail(ed, place.src, comp);
+          if (f) {
+            fails.push(`❌ ${comp.name} into ${place.name}\n${f}`);
+          }
         }
       }
-    }
-    expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
-  });
+      expect(fails.join("\n\n"), `failures of ${count}`).toBe("");
+    },
+    MATRIX_TIMEOUT,
+  );
 });
