@@ -36,6 +36,15 @@ A local file resolved against the page — the same as the site does.
   <figcaption>A figure with a caption</figcaption>
 </figure>
 
+## One picture per color scheme
+
+![Drawn for a pale background](../assets/scheme-light.svg#only-light){ width="320" }
+![Drawn for a dark background](../assets/scheme-dark.svg#only-dark){ width="320" }
+
+The anchor of the address decides which copy the page shows; switching the
+scheme swaps them. The editor keeps both on the page, the hidden one faded, so
+the pair can be edited from one place.
+
 ## Formulas
 
 The percentile of a window is taken over the sorted durations:

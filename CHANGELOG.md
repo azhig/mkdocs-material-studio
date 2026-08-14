@@ -4,10 +4,45 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.2.0 — 2026-08-14
+
+### Monorepo projects
+
+- Follow `Title: '!include ./lib/mkdocs.yml'` (mkdocs-monorepo-plugin): the included
+  config becomes a section whose pages come from its own `docs_dir`, its `site_name`
+  is their URL prefix, and `extra_css` written as `lib/stylesheets/extra.css` is read
+  from `lib/docs/stylesheets/`. Opening a page of a section shows the whole site
+  around it. Entries that live in an included config are shown in the project tree
+  but not edited from there — the panel says which config to open instead.
+
+### Images
+
+- The image form carries the Material attributes in full: width, **height** and
+  alignment.
+- **A light/dark image pair** (`![…](logo.png#only-dark)`, and the GitHub spelling)
+  is displayed the way the site displays it — the copy for the other colour scheme
+  is hidden in the preview and kept on the page, faded, in the visual editor, so
+  both halves stay editable.
+- A pasted or dropped picture appears at once. It used to land in the document
+  invisible: the editor was given the path for the file, which a webview cannot
+  load, and the empty frame outlived every edit until a full redraw.
+
+### Colours
+
+- Code is highlighted in Material's own palette in both schemes, and a project that
+  recolours `--md-code-hl-*` in `extra_css` is now followed. The preview used to
+  paint keywords red and numbers blue where the site had the opposite.
+- With no `theme.palette` a project keeps Material's own colours instead of the
+  cyan this extension used to impose — cyan links measured 2.3:1 on white.
+- Links in the dark scheme are readable again (4.7:1 instead of 2.3:1).
+- The site header picks a readable text colour when a custom stylesheet sets its
+  background without setting the matching foreground.
+
+### Diagrams and diagnostics
 
 - Restore `Ctrl/Cmd+V` paste in the diagram source field.
 - Detect Mermaid or PlantUML from diagram source instead of asking for a language.
+- Say in the log why the icon pack did not open, instead of leaving shortcodes as text.
 
 ## 0.1.1 — 2026-08-12
 

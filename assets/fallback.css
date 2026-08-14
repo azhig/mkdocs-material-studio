@@ -69,92 +69,85 @@ body {
   overflow-y: hidden;
 }
 
-/* ---- highlight.js: light theme (default) ---- */
+/* ---- highlight.js in Material's colors ----
+
+   The site highlights with Pygments, the preview with highlight.js, so the class
+   names differ — the palette must not. Every rule maps a highlight.js class onto
+   the variable Material gives the matching Pygments token. Hard-coded colors used
+   to live here, one set per scheme: the code came out in GitHub's palette (red
+   keywords, blue numbers) where the site had Material's (blue keywords, red
+   numbers), the slate half had to be written twice, and a project that recolored
+   `--md-code-hl-*` in extra_css was ignored. Through the variables all three
+   follow along. */
 .hljs-comment,
 .hljs-quote {
-  color: #6a737d;
-  font-style: italic;
+  color: var(--md-code-hl-comment-color);
 }
 .hljs-keyword,
 .hljs-selector-tag,
+.hljs-type,
+.hljs-name,
+.hljs-tag,
+.hljs-meta-keyword {
+  color: var(--md-code-hl-keyword-color);
+}
+/* `True`, `None`, a parameter, a property — Pygments leaves these the color of
+   the code itself, and so does Material (`.kc`, `.n` → name). */
 .hljs-literal,
-.hljs-type {
-  color: #d73a49;
+.hljs-params,
+.hljs-property {
+  color: var(--md-code-hl-name-color);
 }
 .hljs-string,
 .hljs-meta .hljs-string,
-.hljs-regexp,
-.hljs-addition {
-  color: #032f62;
-}
-.hljs-number,
 .hljs-symbol,
-.hljs-bullet {
-  color: #005cc5;
+.hljs-addition {
+  color: var(--md-code-hl-string-color);
+}
+/* An escape, a regexp, a preprocessor line — `.se`, `.sr`, `.cp` in Material. */
+.hljs-regexp,
+.hljs-meta,
+.hljs-subst,
+.hljs-char.escape_ {
+  color: var(--md-code-hl-special-color);
+}
+.hljs-number {
+  color: var(--md-code-hl-number-color);
 }
 .hljs-title,
-.hljs-name,
+.hljs-title.class_,
+.hljs-title.function_,
 .hljs-section,
-.hljs-selector-id,
-.hljs-selector-class {
-  color: #6f42c1;
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--md-code-hl-function-color);
+}
+.hljs-built_in,
+.hljs-builtin-name {
+  color: var(--md-code-hl-constant-color);
 }
 .hljs-attr,
 .hljs-attribute,
 .hljs-variable,
 .hljs-template-variable {
-  color: #e36209;
+  color: var(--md-code-hl-variable-color);
 }
-.hljs-built_in,
-.hljs-builtin-name,
-.hljs-tag {
-  color: #22863a;
+.hljs-operator {
+  color: var(--md-code-hl-operator-color);
 }
-.hljs-deletion {
-  color: #b31d28;
+.hljs-punctuation {
+  color: var(--md-code-hl-punctuation-color);
+}
+.hljs-deletion,
+.hljs-formula,
+.hljs-bullet {
+  color: var(--md-code-hl-generic-color);
 }
 .hljs-emphasis {
   font-style: italic;
 }
 .hljs-strong {
   font-weight: 700;
-}
-
-/* ---- highlight.js: dark theme (slate) ---- */
-[data-md-color-scheme="slate"] .hljs-comment,
-[data-md-color-scheme="slate"] .hljs-quote {
-  color: #8b949e;
-}
-[data-md-color-scheme="slate"] .hljs-keyword,
-[data-md-color-scheme="slate"] .hljs-selector-tag,
-[data-md-color-scheme="slate"] .hljs-literal,
-[data-md-color-scheme="slate"] .hljs-type {
-  color: #ff7b72;
-}
-[data-md-color-scheme="slate"] .hljs-string,
-[data-md-color-scheme="slate"] .hljs-regexp,
-[data-md-color-scheme="slate"] .hljs-addition {
-  color: #a5d6ff;
-}
-[data-md-color-scheme="slate"] .hljs-number,
-[data-md-color-scheme="slate"] .hljs-symbol,
-[data-md-color-scheme="slate"] .hljs-bullet {
-  color: #79c0ff;
-}
-[data-md-color-scheme="slate"] .hljs-title,
-[data-md-color-scheme="slate"] .hljs-name,
-[data-md-color-scheme="slate"] .hljs-section,
-[data-md-color-scheme="slate"] .hljs-selector-class {
-  color: #d2a8ff;
-}
-[data-md-color-scheme="slate"] .hljs-attr,
-[data-md-color-scheme="slate"] .hljs-attribute,
-[data-md-color-scheme="slate"] .hljs-variable {
-  color: #ffa657;
-}
-[data-md-color-scheme="slate"] .hljs-built_in,
-[data-md-color-scheme="slate"] .hljs-tag {
-  color: #7ee787;
 }
 
 /* ---- Per-line mode (linenums / hl_lines) ---- */

@@ -2,7 +2,7 @@
   "name": "mkdocs-material-studio",
   "displayName": "MkDocs Material Studio",
   "description": "%extension.description%",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "azhig",
   "license": "MIT",
   "repository": {
@@ -370,7 +370,7 @@
             "black",
             "white"
           ],
-          "default": "cyan",
+          "default": "",
           "markdownDescription": "%config.palette.light.primary%"
         },
         "mkdocsStudio.palette.light.accent": {
@@ -413,7 +413,7 @@
             "orange",
             "deep orange"
           ],
-          "default": "cyan",
+          "default": "",
           "markdownDescription": "%config.palette.light.accent%"
         },
         "mkdocsStudio.palette.dark.primary": {
@@ -466,7 +466,7 @@
             "black",
             "white"
           ],
-          "default": "cyan",
+          "default": "",
           "markdownDescription": "%config.palette.dark.primary%"
         },
         "mkdocsStudio.palette.dark.accent": {
@@ -509,7 +509,7 @@
             "orange",
             "deep orange"
           ],
-          "default": "cyan",
+          "default": "",
           "markdownDescription": "%config.palette.dark.accent%"
         },
         "mkdocsStudio.followActiveEditor": {

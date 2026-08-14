@@ -341,10 +341,10 @@ window.addEventListener("message", (e: MessageEvent) => {
       break;
     }
     case "imageSaved":
-      onImageSaved(Number(msg.token), String(msg.relPath));
+      onImageSaved(Number(msg.token), String(msg.relPath), String(msg.webUri ?? ""));
       break;
     case "filePicked":
-      onFilePicked(Number(msg.token), String(msg.relPath));
+      onFilePicked(Number(msg.token), String(msg.relPath), String(msg.webUri ?? ""));
       break;
     case "imageSaveFailed":
       onImageSaveFailed(Number(msg.token), String(msg.error ?? ""));

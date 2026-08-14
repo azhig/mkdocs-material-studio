@@ -30,6 +30,9 @@ export interface SchemeHooks {
   persist?: (override: Scheme | null) => void;
 }
 
+/** What `theme.palette` means when it names no colour — Material's own default. */
+const MATERIAL_DEFAULT_COLOR = "indigo";
+
 let hooks: SchemeHooks = {};
 let themeOverride: Scheme | null = null;
 let palette: PaletteMsg | undefined;
@@ -121,14 +124,13 @@ export function applyBackground(mode?: string): void {
  */
 function applyColors(scheme: Scheme): void {
   const colors = (scheme === "slate" ? palette?.dark : palette?.light) ?? {};
-  for (const [attr, value] of [
-    ["data-md-color-primary", colors.primary],
-    ["data-md-color-accent", colors.accent],
-  ] as const) {
-    if (value) {
-      document.body.setAttribute(attr, value);
-    } else {
-      document.body.removeAttribute(attr);
-    }
-  }
+  // Both attributes are always written, with Material's own default where the
+  // project says nothing — a built site does the same, since the template fills
+  // in indigo. Leaving an attribute off is NOT the same as “no colour chosen”:
+  // the slate scheme lightens links through
+  // `[data-md-color-scheme=slate][data-md-color-primary=indigo]`, which needs
+  // both. Without the primary one the dark page kept the light scheme's link
+  // colour — #4051b5 on the slate background, a contrast of 2.35:1.
+  document.body.setAttribute("data-md-color-primary", colors.primary || MATERIAL_DEFAULT_COLOR);
+  document.body.setAttribute("data-md-color-accent", colors.accent || MATERIAL_DEFAULT_COLOR);
 }

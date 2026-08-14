@@ -114,7 +114,7 @@ async function makeEditor(): Promise<Editor> {
     popupAnchor: () => menu.insertPopupAnchor(),
     blockByStart: () => undefined,
     caretInto: () => {},
-    pickFile: () => Promise.resolve("includes/abbreviations.md"),
+    pickFile: () => Promise.resolve({ rel: "includes/abbreviations.md", webUri: "" }),
     linkSuggestions: () => [],
   });
 

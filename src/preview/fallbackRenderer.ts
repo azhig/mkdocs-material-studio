@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { buildMarkdownEngine } from "./markdownEngine";
 import { readMkdocsConfig, type PaletteConfig } from "../core/mkdocsConfig";
 import { resolvePalette, type PaletteInfo } from "../core/paletteResolve";
-import { rewriteHtmlAssetUrls } from "../core/assetUrls";
+import { rewriteHtmlAssetUrls, splitAssetTarget } from "../core/assetUrls";
 import { extensionIconPack } from "../core/extensionIcons";
 import type { MkdocsProject } from "../core/projectService";
 import { getLogger } from "../util/logger";
@@ -89,9 +89,10 @@ export function createFallbackRenderer(context: vscode.ExtensionContext): Fallba
 }
 
 /**
- * A link from the document to an address the webview may load. The query and the
- * anchor of the link are dropped: they mean nothing for a file on disk, and
- * `asWebviewUri` would carry them into the path.
+ * A link from the document to an address the webview may load. The file is
+ * looked up without the query and the anchor — `asWebviewUri` would carry them
+ * into the path — but the anchor is put back afterwards: `#only-dark` is what
+ * Material's stylesheet reads to hide the image of the other color scheme.
  */
 function resolveAsset(
   target: string,
@@ -99,7 +100,7 @@ function resolveAsset(
   siteRoot: string,
   toWebviewUri: (uri: vscode.Uri) => string,
 ): string | undefined {
-  const clean = target.replace(/[?#].*$/, "");
+  const { path: clean, hash } = splitAssetTarget(target);
   if (clean === "") {
     return undefined;
   }
@@ -118,7 +119,7 @@ function resolveAsset(
     // instead of turning into an unreadable webview address.
     return undefined;
   }
-  return toWebviewUri(vscode.Uri.file(abs));
+  return toWebviewUri(vscode.Uri.file(abs)) + hash;
 }
 
 /**
@@ -127,7 +128,12 @@ function resolveAsset(
  */
 function paletteFromSettings(scope?: vscode.Uri): PaletteInfo {
   const cfg = vscode.workspace.getConfiguration("mkdocsStudio", scope);
-  const read = (key: string): string | undefined => cfg.get<string>(key, "cyan") || undefined;
+  // Unset by default, and that is the point: with nothing here the page keeps the
+  // colors Material itself ships (indigo), which is what a project without a
+  // `theme.palette` looks like when it is built. Forcing a color of our own made
+  // the preview disagree with the site — and cyan links came out at 2.3:1 on
+  // white, well under what is readable.
+  const read = (key: string): string | undefined => cfg.get<string>(key, "") || undefined;
   return {
     light: { primary: read("palette.light.primary"), accent: read("palette.light.accent") },
     dark: { primary: read("palette.dark.primary"), accent: read("palette.dark.accent") },

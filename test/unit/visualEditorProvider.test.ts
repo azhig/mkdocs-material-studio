@@ -7,6 +7,9 @@
 // and every assertion is on what the file says afterwards.
 
 import { beforeEach, describe, expect, it } from "vitest";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import * as vscode from "vscode";
 import { VisualEditorProvider } from "../../src/wysiwyg/visualEditorProvider";
 import {
@@ -275,6 +278,65 @@ describe("pickFile: the path written into the document", () => {
     await settle();
     expect(panel.last("filePicked")).toMatchObject({ token: 10, relPath: "../logo.png" });
     expect(snippetWarnings()).toEqual([]);
+  });
+
+  it("an image also comes back as an address the webview can display", async () => {
+    // The relative path belongs in the file and nowhere else: a webview resolves
+    // it against its own base and shows an empty frame. The form previews the
+    // picture and then puts it in the page, so it needs the other address too.
+    const { panel } = await open("# Title\n", projectAt("/work"));
+    __recorded.openDialogResult = [vscode.Uri.file("/work/logo.png")];
+    await panel.send({ type: "pickFile", kind: "image", token: 11 });
+    await settle();
+    expect(String(panel.last("filePicked")?.webUri)).toContain("/work/logo.png");
+  });
+
+  it("a snippet needs no such address — nothing displays it", async () => {
+    const { panel } = await open("# Title\n", projectAt("/work"));
+    __recorded.openDialogResult = [vscode.Uri.file("/work/CLAUDE.md")];
+    await panel.send({ type: "pickFile", kind: "snippet", token: 12 });
+    await settle();
+    expect(panel.last("filePicked")?.webUri).toBe("");
+  });
+});
+
+describe("saveImage: what comes back to the editor", () => {
+  it("carries both the path for the file and the address for the screen", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "mkdocs-paste-"));
+    try {
+      const doc = new FakeTextDocument(vscode.Uri.file(path.join(root, "page.md")), "# Title\n");
+      const panel = new FakeWebviewPanel();
+      const provider = new VisualEditorProvider(
+        fakeContext() as never,
+        noProjects(),
+        echoRenderer(),
+        recordingInsertPanel(),
+      );
+      provider.resolveCustomTextEditor(doc as never, panel as never, {} as never);
+      await settle();
+
+      await panel.send({
+        type: "saveImage",
+        token: 3,
+        data: Buffer.from("PNG").toString("base64"),
+        mime: "image/png",
+        name: "shot.png",
+      });
+      // Saving is real file I/O — a fixed number of microtask rounds is a race.
+      for (let i = 0; i < 500 && !panel.last("imageSaved"); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+      }
+
+      const answer = panel.last("imageSaved");
+      expect(answer).toMatchObject({ token: 3, relPath: "assets/shot.png" });
+      // Without this the pasted picture lands in the document invisible: the
+      // block holding the caret is the one a catch-up patch does not replace.
+      expect(String(answer?.webUri)).toContain("assets/shot.png");
+      expect(String(answer?.webUri)).not.toBe("assets/shot.png");
+      expect(await fs.readFile(path.join(root, "assets", "shot.png"), "utf8")).toBe("PNG");
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });
 

@@ -45,7 +45,7 @@ export interface InsertsHost {
   /** Puts the caret inside a block. */
   caretInto(block: HTMLElement): void;
   /** Asks the extension for a file through the VS Code dialog. */
-  pickFile(kind: "image" | "snippet"): Promise<string>;
+  pickFile(kind: "image" | "snippet"): Promise<{ rel: string; webUri: string }>;
   /** The pages of the site, for the button's address field. */
   linkSuggestions(): ComboItem[];
 }
@@ -904,9 +904,9 @@ export function openSnippetInsert(): void {
   browse.className = "secondary";
   browse.textContent = t("Choose file…");
   browse.addEventListener("click", () => {
-    void host.pickFile("snippet").then((rel) => {
-      if (rel) {
-        input.value = rel;
+    void host.pickFile("snippet").then((picked) => {
+      if (picked.rel) {
+        input.value = picked.rel;
       }
     });
   });

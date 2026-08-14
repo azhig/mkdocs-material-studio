@@ -1,0 +1,9 @@
+<!-- The other half of the pair: the copy shown while the slate scheme is active
+     (`#only-dark`). Drawn for a dark page background. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120"
+     font-family="-apple-system, Segoe UI, sans-serif">
+  <rect x="1" y="1" width="318" height="118" rx="10" fill="#1f1a2e" stroke="#b39ddb" stroke-width="2" />
+  <circle cx="60" cy="60" r="22" fill="#7e57c2" />
+  <text x="112" y="54" font-size="18" fill="#ede7f6">Dark scheme</text>
+  <text x="112" y="78" font-size="13" fill="#b0a8c4">drawn for a dark background</text>
+</svg>

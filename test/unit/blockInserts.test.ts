@@ -61,7 +61,9 @@ async function fresh(): Promise<Harness> {
         (el) => Number(el.getAttribute("data-src-line")) === start,
       ),
     caretInto: () => {},
-    pickFile: () => Promise.resolve(state.pickedFile),
+    // The dialog answers with both addresses; a snippet has no picture to show,
+    // so only the path is of any use here.
+    pickFile: () => Promise.resolve({ rel: state.pickedFile, webUri: "" }),
     linkSuggestions: () => [],
   });
   return {
