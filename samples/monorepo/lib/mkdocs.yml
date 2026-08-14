@@ -1,0 +1,7 @@
+# `site_name` of an included config is the URL prefix of the section: its page
+# `guide/metrics.md` is addressed as `lib/guide/metrics.md`.
+site_name: lib
+
+nav:
+  - Overview: index.md
+  - Metrics: guide/metrics.md

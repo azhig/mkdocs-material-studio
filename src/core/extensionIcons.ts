@@ -6,13 +6,21 @@
 
 import * as vscode from "vscode";
 import { openIconPack, type IconPack } from "./iconPack";
+import { getLogger } from "../util/logger";
 
 let shared: IconPack | undefined;
 let registered = false;
 
 /** The pack, opened on first use. */
 export function iconPackFor(extensionUri: vscode.Uri): IconPack {
-  shared ??= openIconPack(vscode.Uri.joinPath(extensionUri, "assets", "icons").fsPath);
+  if (!shared) {
+    shared = openIconPack(vscode.Uri.joinPath(extensionUri, "assets", "icons").fsPath);
+    if (shared.problem !== undefined) {
+      // Without this line an install missing the pack is indistinguishable from
+      // a page that simply has no icons: `:material-home:` stays as text either way.
+      getLogger().warn(`Icons: the pack did not open — ${shared.problem}`);
+    }
+  }
   return shared;
 }
 

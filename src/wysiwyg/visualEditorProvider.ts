@@ -549,7 +549,17 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       const fileUri = await this.uniqueImageUri(dirUri, String(m.name ?? ""), ext);
       await vscode.workspace.fs.writeFile(fileUri, bytes);
       const rel = path.relative(docDir, fileUri.fsPath).split(path.sep).join("/");
-      void panel.webview.postMessage({ type: "imageSaved", token, relPath: rel });
+      // Both addresses: the relative one is what the file gets, the webview one
+      // is what the editor can actually display. Without the second the picture
+      // is in the document and invisible — a webview cannot load `assets/x.png`,
+      // and the block holding the caret is the one a catch-up patch leaves alone,
+      // so the empty frame stays until something redraws the whole page.
+      void panel.webview.postMessage({
+        type: "imageSaved",
+        token,
+        relPath: rel,
+        webUri: panel.webview.asWebviewUri(fileUri).toString(),
+      });
     } catch (err) {
       getLogger().error(`Visual editor: failed to save the image — ${String(err)}`);
       void panel.webview.postMessage({ type: "imageSaveFailed", token, error: String(err) });
@@ -597,7 +607,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     } else if (file) {
       rel = path.relative(docDir, file.fsPath).split(path.sep).join("/");
     }
-    void panel.webview.postMessage({ type: "filePicked", token, relPath: rel });
+    void panel.webview.postMessage({
+      type: "filePicked",
+      token,
+      relPath: rel,
+      // The form previews the picture it is about to insert, and a preview needs
+      // an address the webview may load — see saveImage.
+      webUri: file && kind === "image" ? panel.webview.asWebviewUri(file).toString() : "",
+    });
   }
 
   /** Unique name: image.png, image-1.png, … (we never overwrite existing files). */

@@ -4,10 +4,70 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.2.0 — 2026-08-14
 
+### Monorepo projects
+
+- Follow `Title: '!include ./lib/mkdocs.yml'` (mkdocs-monorepo-plugin): the included
+  config becomes a section whose pages come from its own `docs_dir`, its `site_name`
+  is their URL prefix, and `extra_css` written as `lib/stylesheets/extra.css` is read
+  from `lib/docs/stylesheets/`. Opening a page of a section shows the whole site
+  around it. Entries that live in an included config are shown in the project tree
+  but not edited from there — the panel says which config to open instead.
+
+### Images
+
+- The image form carries the Material attributes in full: width, **height** and
+  alignment.
+- **A light/dark image pair** (`![…](logo.png#only-dark)`, and the GitHub spelling)
+  is displayed the way the site displays it — the copy for the other colour scheme
+  is hidden in the preview and kept on the page, faded, in the visual editor, so
+  both halves stay editable.
+- A pasted or dropped picture appears at once. It used to land in the document
+  invisible: the editor was given the path for the file, which a webview cannot
+  load, and the empty frame outlived every edit until a full redraw.
+
+### Colours
+
+- Code is highlighted in Material's own palette in both schemes, and a project that
+  recolours `--md-code-hl-*` in `extra_css` is now followed. The preview used to
+  paint keywords red and numbers blue where the site had the opposite.
+- With no `theme.palette` a project keeps Material's own colours instead of the
+  cyan this extension used to impose — cyan links measured 2.3:1 on white.
+- Links in the dark scheme are readable again (4.7:1 instead of 2.3:1).
+- The site header picks a readable text colour when a custom stylesheet sets its
+  background without setting the matching foreground.
+
+### Diagrams and diagnostics
+
+- **Mermaid is drawn in the colours of the site**, taken from the palette in
+  `mkdocs.yml` — as Material itself draws it. The engine's own greys sat on the
+  page as a patch of a different hue (a node at #1F2020 against slate's #1E2129),
+  and the label of an edge carried a grey plate over the line it belonged to.
+- **A PlantUML diagram follows the page scheme**: on a dark page it is drawn in
+  dark mode instead of near-black ink on near-black background, and switching
+  the theme redraws it. Its own palette is left alone — that is what the
+  published site will draw — but the diagram now sits on the panel a code block
+  sits on, instead of floating on the page in a tone of its own.
+- **A PlantUML source with a mistake in it says so.** The engine reports one by
+  drawing a picture about it — “PlantUML version …, Syntax Error?” — which was
+  displayed as if it were the diagram the author wrote. It is now shown as an
+  error: the source stays readable and the parser's words are on the block.
+- A PlantUML diagram is drawn once and kept: a keystroke in the document used to
+  redraw every diagram on the page from scratch.
+- A diagram the engine refuses no longer looks like an ordinary code block — the
+  block is marked and the engine's own message is in its tooltip.
+- A runtime that fails to start now says so instead of leaving every diagram on
+  the page waiting for it forever, and a lost script is retried rather than
+  remembered as a failure for the lifetime of the panel.
+- The diagram component offers each renderer only the diagrams it draws, and
+  every type inserts its own: “Gantt” in PlantUML used to insert a sequence
+  diagram, and “Pie” a diagram PlantUML cannot draw at all.
+- ` ```puml ` and a fence with a title survive a round trip through the visual
+  editor — the language was rewritten to the canonical name and the title dropped.
 - Restore `Ctrl/Cmd+V` paste in the diagram source field.
 - Detect Mermaid or PlantUML from diagram source instead of asking for a language.
+- Say in the log why the icon pack did not open, instead of leaving shortcodes as text.
 
 ## 0.1.1 — 2026-08-12
 

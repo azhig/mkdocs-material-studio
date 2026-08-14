@@ -14,6 +14,9 @@ interface FieldDef {
   default?: string | number | boolean;
   placeholder?: string;
   help?: string;
+  /** The field that picks this one's options, and the options per its value. */
+  dependsOn?: string;
+  optionsBy?: Record<string, FieldOption[]>;
 }
 interface ComponentMeta {
   id: string;
@@ -133,9 +136,48 @@ function renderForm(
   });
 
   app.appendChild(form);
+  const refreshDependent = wireDependentFields(form, component);
   if (prefill) {
     applyValues(form, component, prefill);
+    refreshDependent(); // the prefilled language decides which types are offered
   }
+}
+
+/**
+ * Keeps a select whose choices belong to another field in step with it — the
+ * diagram type follows the diagram language. Returns a function that re-applies
+ * the dependency after the form has been filled programmatically (no `change`
+ * event is fired then).
+ */
+function wireDependentFields(form: HTMLFormElement, component: ComponentMeta): () => void {
+  const refreshers: Array<() => void> = [];
+  for (const field of component.fields) {
+    if (!field.dependsOn || !field.optionsBy) {
+      continue;
+    }
+    const master = form.elements.namedItem(field.dependsOn);
+    const slave = form.elements.namedItem(field.name);
+    if (!(master instanceof HTMLSelectElement) || !(slave instanceof HTMLSelectElement)) {
+      continue;
+    }
+    const fill = (): void => {
+      const options = field.optionsBy?.[master.value] ?? field.options ?? [];
+      const chosen = slave.value;
+      slave.replaceChildren();
+      for (const opt of options) {
+        const o = document.createElement("option");
+        o.value = opt.value;
+        o.textContent = opt.label;
+        slave.appendChild(o);
+      }
+      // A type both renderers know (a sequence diagram) survives the switch.
+      slave.value = options.some((o) => o.value === chosen) ? chosen : (options[0]?.value ?? "");
+    };
+    master.addEventListener("change", fill);
+    fill();
+    refreshers.push(fill);
+  }
+  return () => refreshers.forEach((refresh) => refresh());
 }
 
 /** Pre-fills the form fields with values (for the editing mode). */

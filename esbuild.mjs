@@ -128,6 +128,7 @@ async function copyVendorAssets() {
 
   // The PlantUML JavaScript itself is bundled into dist; ship its MIT notice too.
   const plantumlOut = path.join(ROOT, "assets", "vendor", "plantuml");
+  await rm(plantumlOut, { recursive: true, force: true });
   await mkdir(plantumlOut, { recursive: true });
   const plantumlLicense = await readFile(
     path.join(ROOT, "node_modules", "@plantuml", "core", "LICENSE"),

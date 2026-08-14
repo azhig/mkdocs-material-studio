@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rewriteHtmlAssetUrls } from "../../src/core/assetUrls";
+import { rewriteHtmlAssetUrls, splitAssetTarget } from "../../src/core/assetUrls";
 
 /** The panel's translator: a path becomes an address the webview may load. */
 const resolve = (target: string): string | undefined =>
@@ -56,5 +56,29 @@ describe("rewriteHtmlAssetUrls", () => {
   it("does not touch tags without an address", () => {
     const html = "<img><p>text</p>";
     expect(rewriteHtmlAssetUrls(html, resolve)).toBe(html);
+  });
+});
+
+// A light/dark image pair is told apart by the anchor alone — Material hides
+// the one that does not belong to the active scheme with `img[src$="#only-dark"]`.
+// Lose the anchor while pointing the link at the file and the page shows both.
+describe("the anchor of a media link", () => {
+  it("is kept apart from the file the link names", () => {
+    expect(splitAssetTarget("assets/logo.png#only-dark")).toEqual({
+      path: "assets/logo.png",
+      hash: "#only-dark",
+    });
+  });
+
+  it("is empty when the link has none", () => {
+    expect(splitAssetTarget("assets/logo.png")).toEqual({ path: "assets/logo.png", hash: "" });
+  });
+
+  it("does not swallow the query, which no stylesheet reads", () => {
+    expect(splitAssetTarget("logo.png?v=2#only-light")).toEqual({
+      path: "logo.png",
+      hash: "#only-light",
+    });
+    expect(splitAssetTarget("logo.png?v=2")).toEqual({ path: "logo.png", hash: "" });
   });
 });

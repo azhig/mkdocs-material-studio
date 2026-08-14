@@ -108,7 +108,7 @@ import {
 } from "./blockHandle";
 import { initIconPicker, openIconPicker } from "./iconPicker";
 import { initMathDialog, openMathDialog } from "./mathDialog";
-import { initMermaidDialog, openMermaidDialog } from "./mermaidDialog";
+import { initMermaidDialog, openMermaidDialog, withDiagramLanguage } from "./mermaidDialog";
 import { hasActivePopup, onPopupClose } from "./popups";
 import {
   adoptText,
@@ -188,6 +188,7 @@ import {
 } from "./tables";
 import { decorateCodeNav } from "../shared/codeNav";
 import {
+  keepHeaderReadable,
   renderSiteHeader,
   renderSiteNav,
   type SiteChromeData,
@@ -330,14 +331,20 @@ window.addEventListener("message", (e: MessageEvent) => {
         "markdown",
       );
       break;
-    case "extraCss":
+    case "extraCss": {
       applyExtraCss(String(msg.css), "vExtraCss");
+      // The project's stylesheet has the last word on the header colors.
+      const head = document.getElementById("vhead");
+      if (head) {
+        keepHeaderReadable(head);
+      }
       break;
+    }
     case "imageSaved":
-      onImageSaved(Number(msg.token), String(msg.relPath));
+      onImageSaved(Number(msg.token), String(msg.relPath), String(msg.webUri ?? ""));
       break;
     case "filePicked":
-      onFilePicked(Number(msg.token), String(msg.relPath));
+      onFilePicked(Number(msg.token), String(msg.relPath), String(msg.webUri ?? ""));
       break;
     case "imageSaveFailed":
       onImageSaveFailed(Number(msg.token), String(msg.error ?? ""));
@@ -1114,9 +1121,7 @@ function openIslandEditor(el: HTMLElement): void {
       (code, nextLanguage) => {
         const cur = rangeOf(el); // the range could have shifted due to parallel edits
         const nextOpenLine =
-          nextLanguage === language
-            ? openLine
-            : openLine.replace(/^(\s*(?:`{3,}|~{3,})\s*)[\w+-]+/, `$1${nextLanguage}`);
+          nextLanguage === language ? openLine : withDiagramLanguage(openLine, nextLanguage);
         const fence = indentLines([nextOpenLine, ...code.split("\n"), closeLine], indent);
         document.getSelection()?.removeAllRanges();
         sendSync([{ start: cur.start, end: cur.end, text: fence.join("\n") + "\n" }]);

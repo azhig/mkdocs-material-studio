@@ -426,6 +426,66 @@ describe("the state around a batch in flight", () => {
     expect(ran).toEqual([]);
   });
 
+  // A second click on an interface control — another call-out type, another
+  // language on a code block — used to send a batch built against the version
+  // the editor last heard about. The extension had already moved past it, the
+  // whole batch was refused, and the click did nothing at all.
+  it("an interface edit waits for the batch in flight instead of racing it", () => {
+    const built: string[] = [];
+    h.core.noteSyncSent();
+    h.core.sendBuiltSync(() => {
+      built.push("second");
+      return [{ start: 0, end: 1, text: "two\n" }];
+    });
+    expect(built).toEqual([]);
+    expect(h.posts).toHaveLength(0);
+
+    h.core.finishRemote();
+    expect(built).toEqual(["second"]);
+    expect(h.posts).toHaveLength(1);
+    expect(h.posts[0]).toMatchObject({ type: "sync", edits: [{ text: "two\n" }] });
+  });
+
+  it("builds the waiting edit only after the answer, from the text that came back", () => {
+    h.core.noteSyncSent();
+    h.core.sendBuiltSync(() => [{ start: 0, end: 1, text: h.core.docLines()[0] + "!\n" }]);
+    // The answer brings a text the click never saw; the edit is built on THAT.
+    h.core.adoptText("changed\n", 2);
+    h.core.finishRemote();
+    expect(h.posts[0]).toMatchObject({ baseVersion: 2, edits: [{ text: "changed!\n" }] });
+  });
+
+  it("lets waiting edits through one at a time, each after its own answer", () => {
+    const built: string[] = [];
+    h.core.noteSyncSent();
+    h.core.sendBuiltSync(() => {
+      built.push("a");
+      return [{ start: 0, end: 1, text: "a\n" }];
+    });
+    h.core.sendBuiltSync(() => {
+      built.push("b");
+      return [{ start: 0, end: 1, text: "b\n" }];
+    });
+
+    h.core.finishRemote();
+    expect(built).toEqual(["a"]);
+    h.core.finishRemote();
+    expect(built).toEqual(["a", "b"]);
+    expect(h.posts).toHaveLength(2);
+  });
+
+  it("sends straight away when nothing is in flight", () => {
+    h.core.sendBuiltSync(() => [{ start: 0, end: 1, text: "now\n" }]);
+    expect(h.posts).toHaveLength(1);
+  });
+
+  it("drops a waiting edit whose block is gone rather than writing at a guess", () => {
+    h.core.noteSyncSent();
+    h.core.sendBuiltSync(() => undefined); // the block was not found any more
+    h.core.finishRemote();
+    expect(h.posts).toHaveLength(0);
+  });
+
   it("the full-render request is read once", () => {
     expect(h.core.takeFullRenderRequest()).toBe(false);
     h.core.requestFullRender();

@@ -176,6 +176,41 @@ describe("deleting", () => {
   });
 });
 
+describe("an entry that lives in an !include'd config", () => {
+  /** What the tree hands over for a page of a section: no nav path, a config name. */
+  function sectionNode() {
+    return {
+      type: "page" as const,
+      title: "Metrics",
+      fileUri: vscode.Uri.file(path.join(root, "lib", "docs", "metrics.md")),
+      project,
+      includedFrom: "lib/mkdocs.yml",
+    };
+  }
+
+  it("is not renamed into the config being edited", async () => {
+    const before = await configText();
+    __recorded.inputBoxAnswers = ["Other name"];
+    await run("mkdocsStudio.tree.rename", sectionNode());
+    expect(await configText()).toBe(before);
+    expect(__recorded.infos.join(" ")).toContain("lib/mkdocs.yml");
+  });
+
+  it("is not removed from it either", async () => {
+    const before = await configText();
+    __recorded.warningAnswer = "Remove";
+    await run("mkdocsStudio.tree.delete", sectionNode());
+    expect(await configText()).toBe(before);
+  });
+
+  it("does not take a new page into it", async () => {
+    const before = await configText();
+    __recorded.inputBoxAnswers = ["Extra", "extra.md"];
+    await run("mkdocsStudio.tree.newPage", sectionNode());
+    expect(await configText()).toBe(before);
+  });
+});
+
 describe("the commands the tree contributes", () => {
   it("are all registered", () => {
     expect(controller).toBeDefined();

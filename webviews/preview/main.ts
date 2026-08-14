@@ -9,7 +9,7 @@ import {
   applyExtraCss,
   initMermaid,
   renderDiagrams,
-  reRenderMermaidTheme,
+  reRenderDiagramTheme,
   watchMermaidReveal,
 } from "../shared/mermaid";
 import {
@@ -21,6 +21,7 @@ import {
   type PaletteMsg,
 } from "../shared/scheme";
 import {
+  keepHeaderReadable,
   renderSiteHeader,
   renderSiteNav,
   type SiteChromeData,
@@ -185,6 +186,8 @@ window.addEventListener("message", (event: MessageEvent) => {
       break;
     case "extraCss":
       applyExtraCss(String(msg.css ?? ""), "extraCss");
+      // The project's stylesheet has the last word on the header colors.
+      keepHeaderReadable(siteHead);
       break;
     case "siteChrome":
       chromeData = msg.data as SiteChromeData;
@@ -355,8 +358,12 @@ function syncThemeButton(): void {
 // the preview only says which button to sync and what to do once it changes.
 initScheme(
   {
-    afterApply: syncThemeButton,
-    onSchemeChange: () => void reRenderMermaidTheme(content),
+    afterApply: () => {
+      syncThemeButton();
+      // Each scheme carries its own header colors — the ink is judged again.
+      keepHeaderReadable(siteHead);
+    },
+    onSchemeChange: () => void reRenderDiagramTheme(content),
     persist: (override) => {
       const prev = vscodeApi.getState?.() ?? {};
       vscodeApi.setState?.({ ...prev, theme: override });

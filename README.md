@@ -25,6 +25,10 @@ icons and emoji, task lists and definition lists. It updates as you type.
   page updates — no need to reopen the tab.
 - **Light or dark follows VS Code**, not `theme.palette.scheme`: a dark editor
   next to a white page is blinding.
+- **The type is the system one.** Sizes, weights, colours and the highlighting of
+  code are Material's own, down to the variable; the typeface is not. A built
+  site fetches Roboto from Google Fonts, and the preview does not reach the
+  network at all — so the text is set in the font of your system.
 - **Links lead where they do on the site.** A click on `setup.md`, `setup/` or
   `../api` opens that page, `#section` scrolls to the heading, an image or a PDF
   opens in VS Code, an external address in the browser.
@@ -49,6 +53,10 @@ text editor is untouched; the visual one opens only when you ask for it.
   inside an admonition it nests into it, inside a content tab into that tab.
 - **Everything inline is edited by clicking it** — a formula, an image, an icon,
   a key combination, a footnote marker, an abbreviation, a link, a button.
+- **An image carries its Material attributes**: width, height and alignment, and
+  the colour scheme it belongs to — a light/dark pair (`#only-light` /
+  `#only-dark`) is shown the way the site shows it, and the copy of the other
+  scheme stays on the page, faded, so it can still be edited.
 - **A code block is edited in place**, with live highlighting and line numbers;
   the language and the title live in the block menu.
 - **One diagram component for Mermaid and PlantUML**, with language-specific
@@ -78,6 +86,13 @@ The **MkDocs panel** in the explorer shows the same navigation plus a “not in
 navigation” section — pages in `docs/` that `nav` does not mention. Creating,
 renaming, deleting and dragging pages there edits `mkdocs.yml` surgically:
 comments and formatting are preserved.
+
+A nav entry of the form `Library: '!include ./lib/mkdocs.yml'`
+(mkdocs-monorepo-plugin) is followed: the included config becomes a section whose
+pages come from its own `docs_dir`, its `site_name` is their URL prefix, and an
+`extra_css` entry written as `lib/stylesheets/extra.css` is read from
+`lib/docs/stylesheets/`. Opening a page of a section shows the whole site around
+it, not just that section.
 
 ### `mkdocs.yml` without writing YAML
 
@@ -151,6 +166,14 @@ Mermaid and PlantUML are rendered locally by browser-native JavaScript engines.
 Diagram source never leaves VS Code, and neither Java nor a network connection
 is required.
 
+Two things about PlantUML are worth knowing. The published site draws these
+fences with a plugin of its own (`plantuml-markdown`, `mkdocs-kroki` or
+similar) — the extension shows the picture whether or not the site is set up
+for it. And the bundled engine is the core one: sprite libraries (AWS, tupadr3,
+material), `<:emoji:>` and `<&openiconic>` icons are not part of it, and a
+diagram that is not in this release is answered with a “not supported” picture
+rather than an error.
+
 The extension does not run `mkdocs serve` and does not manage a server. To see
 the built site with search, plugins and `mkdocstrings`, run `mkdocs serve` in the
 terminal and open it in a browser.
@@ -209,23 +232,23 @@ Code untouched, and a shortcut you reassign hands its old key straight back.
 
 ## Extension settings
 
-| Setting                              | Default                     | What it does                                                                              |
-| ------------------------------------ | --------------------------- | ----------------------------------------------------------------------------------------- |
-| `mkdocsStudio.language`              | `auto`                      | Interface language of the panels; `auto` follows VS Code                                  |
-| `mkdocsStudio.followActiveEditor`    | `true`                      | The preview follows the active Markdown editor                                            |
-| `mkdocsStudio.scrollSync`            | `true`                      | Synchronized scrolling between the editor and the preview                                 |
-| `mkdocsStudio.showSiteHeader`        | `false`                     | Show the site header; the **Header** button toggles it                                    |
-| `mkdocsStudio.showSiteNav`           | `false`                     | Show the page list on the left; the **Navigation** button toggles it                      |
-| `mkdocsStudio.showToc`               | `false`                     | Show the “On this page” panel; the **Contents** button toggles it                         |
-| `mkdocsStudio.pageBackground`        | `material`                  | `material` — the colour of the Material scheme; `editor` — the VS Code theme's background |
-| `mkdocsStudio.palette.light.primary` | `cyan`                      | Primary colour of the light scheme; `theme.palette` in `mkdocs.yml` wins                  |
-| `mkdocsStudio.palette.light.accent`  | `cyan`                      | Accent colour of the light scheme — links and active elements                             |
-| `mkdocsStudio.palette.dark.primary`  | `cyan`                      | Primary colour of the dark (`slate`) scheme                                               |
-| `mkdocsStudio.palette.dark.accent`   | `cyan`                      | Accent colour of the dark scheme                                                          |
-| `mkdocsStudio.imagePasteFolder`      | `assets`                    | Where pasted and dropped images are saved, relative to the current file                   |
-| `mkdocsStudio.inlineFormatting`      | `both`                      | Where formatting appears: `selection`, `toolbar` or `both`                                |
-| `mkdocsStudio.toolbarButtons`        | table, image, code, divider | Components pinned to the visual editor toolbar                                            |
-| `mkdocsStudio.keybindings`           | `{}`                        | Shortcut overrides; only the differences from the defaults are stored                     |
+| Setting                              | Default                     | What it does                                                                                         |
+| ------------------------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `mkdocsStudio.language`              | `auto`                      | Interface language of the panels; `auto` follows VS Code                                             |
+| `mkdocsStudio.followActiveEditor`    | `true`                      | The preview follows the active Markdown editor                                                       |
+| `mkdocsStudio.scrollSync`            | `true`                      | Synchronized scrolling between the editor and the preview                                            |
+| `mkdocsStudio.showSiteHeader`        | `false`                     | Show the site header; the **Header** button toggles it                                               |
+| `mkdocsStudio.showSiteNav`           | `false`                     | Show the page list on the left; the **Navigation** button toggles it                                 |
+| `mkdocsStudio.showToc`               | `false`                     | Show the “On this page” panel; the **Contents** button toggles it                                    |
+| `mkdocsStudio.pageBackground`        | `material`                  | `material` — the colour of the Material scheme; `editor` — the VS Code theme's background            |
+| `mkdocsStudio.palette.light.primary` | _unset_                     | Primary colour of the light scheme; `theme.palette` in `mkdocs.yml` wins, unset keeps Material's own |
+| `mkdocsStudio.palette.light.accent`  | _unset_                     | Accent colour of the light scheme — links and active elements                                        |
+| `mkdocsStudio.palette.dark.primary`  | _unset_                     | Primary colour of the dark (`slate`) scheme                                                          |
+| `mkdocsStudio.palette.dark.accent`   | _unset_                     | Accent colour of the dark scheme                                                                     |
+| `mkdocsStudio.imagePasteFolder`      | `assets`                    | Where pasted and dropped images are saved, relative to the current file                              |
+| `mkdocsStudio.inlineFormatting`      | `both`                      | Where formatting appears: `selection`, `toolbar` or `both`                                           |
+| `mkdocsStudio.toolbarButtons`        | table, image, code, divider | Components pinned to the visual editor toolbar                                                       |
+| `mkdocsStudio.keybindings`           | `{}`                        | Shortcut overrides; only the differences from the defaults are stored                                |
 
 An example for `settings.json` — a German interface, images kept in `images/`
 next to the page, and formatting shown only on a selection:

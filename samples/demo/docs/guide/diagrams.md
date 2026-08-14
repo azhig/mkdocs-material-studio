@@ -25,6 +25,23 @@ sequenceDiagram
     Daemon-->>CLI: rendered report
 ```
 
+## The same story in PlantUML
+
+```plantuml
+@startuml
+participant CLI
+participant Daemon
+database Store
+CLI -> Daemon: report --since 24h
+Daemon -> Store: read windows
+Store --> Daemon: 288 rows
+Daemon --> CLI: rendered report
+@enduml
+```
+
+PlantUML is drawn by the engine bundled with the extension — no Java, no server
+and no network. The published site needs its own plugin for these fences.
+
 ## A picture from the repository
 
 ![The parts of Aurora and what flows between them](../assets/architecture.svg)
@@ -35,6 +52,15 @@ A local file resolved against the page — the same as the site does.
   ![A smaller copy of the same picture](../assets/architecture.svg){ width="320" }
   <figcaption>A figure with a caption</figcaption>
 </figure>
+
+## One picture per color scheme
+
+![Drawn for a pale background](../assets/scheme-light.svg#only-light){ width="320" }
+![Drawn for a dark background](../assets/scheme-dark.svg#only-dark){ width="320" }
+
+The anchor of the address decides which copy the page shows; switching the
+scheme swaps them. The editor keeps both on the page, the hidden one faded, so
+the pair can be edited from one place.
 
 ## Formulas
 

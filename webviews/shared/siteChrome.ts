@@ -4,6 +4,7 @@
 // (see src/core/siteChrome.ts).
 
 import type { SiteNode } from "../../src/core/siteNavBuild";
+import { inkFor } from "./contrast";
 import { t } from "./i18n";
 
 export interface SiteChromeData {
@@ -116,6 +117,26 @@ export function renderSiteHeader(
     const href = data.repoUrl;
     repo.addEventListener("click", () => hooks.openLink(href));
     inner.appendChild(repo);
+  }
+
+  keepHeaderReadable(host);
+}
+
+/**
+ * Repaints the header ink when the stylesheets have left it unreadable — see
+ * contrast.ts for how that happens. Everything in the bar inherits its color, so
+ * one property on the bar covers the name, the tabs and the repository link.
+ *
+ * Call after anything that can change the colors: the render above, a scheme
+ * switch, a fresh extra_css.
+ */
+export function keepHeaderReadable(host: HTMLElement): void {
+  // Measure what the stylesheets say now, not what this function wrote last time.
+  host.style.removeProperty("color");
+  const style = getComputedStyle(host);
+  const ink = inkFor(style.backgroundColor, style.color);
+  if (ink !== null) {
+    host.style.color = ink;
   }
 }
 

@@ -21,6 +21,12 @@ export interface IconPack {
   get(shortcode: string): string | undefined;
   /** The same for a batch — one file read per icon, one message per screen. */
   getMany(shortcodes: readonly string[]): Record<string, string>;
+  /**
+   * What went wrong opening the pack, when something did. Without it a broken
+   * install looks exactly like a page with no icons on it: every shortcode is
+   * simply left as text, and nothing anywhere says why.
+   */
+  problem?: string;
   /** Closes the descriptor; the pack is unusable afterwards. */
   dispose(): void;
 }
@@ -32,17 +38,18 @@ export interface IconPack {
  * exactly as it does for an unknown icon name.
  */
 export function openIconPack(root: string): IconPack {
+  const problems: string[] = [];
   let index: PackIndex = {};
   try {
     index = JSON.parse(fs.readFileSync(path.join(root, "icons.index.json"), "utf8")) as PackIndex;
-  } catch {
-    /* no index — the pack answers nothing */
+  } catch (err) {
+    problems.push(`icons.index.json — ${String(err)}`);
   }
   let fd: number | undefined;
   try {
     fd = fs.openSync(path.join(root, "icons.pack"), "r");
-  } catch {
-    /* no pack file — same */
+  } catch (err) {
+    problems.push(`icons.pack — ${String(err)}`);
   }
   // Icons repeat across a page (a call-out title, a nav entry), so the last few
   // hundred stay in memory. The cap keeps a long editing session bounded.
@@ -90,6 +97,7 @@ export function openIconPack(root: string): IconPack {
       }
       return out;
     },
+    problem: problems.length > 0 ? problems.join("; ") : undefined,
     dispose: () => {
       if (fd !== undefined) {
         fs.closeSync(fd);

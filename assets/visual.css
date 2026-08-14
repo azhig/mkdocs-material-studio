@@ -732,12 +732,21 @@ body.vtoc #vtoc {
   flex: 0 0 auto;
   white-space: nowrap;
 }
+/* Width, height and alignment share one row — three fields need the form a
+   little wider than the shared minimum, and an input keeps its own idea of a
+   minimum unless it is told otherwise. */
+.vpop.vimg form {
+  min-width: 300px;
+}
 .vpop.vimg .vimg-row {
   display: flex;
   gap: 8px;
 }
 .vpop.vimg .vimg-row label {
   flex: 1;
+  min-width: 0;
+}
+.vpop.vimg .vimg-row input {
   min-width: 0;
 }
 .vpop.vimg select {
@@ -775,6 +784,21 @@ body.vtoc #vtoc {
 }
 #doc [data-emoji] img {
   cursor: inherit;
+}
+
+/* An image addressed at the other color scheme (`img.png#only-dark`). Material
+   hides it outright, which is right for a site and wrong for an editor: what is
+   not rendered cannot be clicked, moved or deleted, so half of a light/dark pair
+   would be out of reach. Here it stays, faded, and the preview shows the page as
+   the site does. */
+[data-md-color-scheme="default"] #doc img[src*="#only-dark"],
+[data-md-color-scheme="default"] #doc img[src*="#gh-dark-mode-only"],
+[data-md-color-scheme="slate"] #doc img[src*="#only-light"],
+[data-md-color-scheme="slate"] #doc img[src*="#gh-light-mode-only"] {
+  display: inline;
+  opacity: 0.5;
+  outline: 1px dashed var(--vscode-widget-border, #8886);
+  outline-offset: 2px;
 }
 
 /* ---------- The formula popup: the LaTeX field with a live preview ---------- */

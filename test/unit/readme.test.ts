@@ -64,11 +64,15 @@ describe("the README describes the extension that is actually shipped", () => {
     ).toEqual([]);
   });
 
-  it("defaults both palette schemes to cyan", () => {
+  it("leaves both palette schemes unset, so a project keeps Material's own colors", () => {
+    // A color here is applied to every project that does not spell out a palette
+    // of its own — which is most of them, since Material's default needs no
+    // `theme.palette` at all. The preview would then disagree with the built site
+    // about the colour of every link and of the header.
     const properties = manifest().contributes.configuration.properties;
     for (const scheme of ["light", "dark"]) {
       for (const role of ["primary", "accent"]) {
-        expect(properties[`mkdocsStudio.palette.${scheme}.${role}`]?.default).toBe("cyan");
+        expect(properties[`mkdocsStudio.palette.${scheme}.${role}`]?.default).toBe("");
       }
     }
   });

@@ -325,6 +325,57 @@ const ALIGNMENTS: Array<{ value: string; label: string }> = [
   { value: "right", label: t("Right") },
 ];
 
+/** The color scheme an image is meant for, the empty string meaning “both”. */
+export type ImageTheme = "" | "light" | "dark";
+
+/**
+ * The anchors Material reads to hide one image of a pair: its own and the
+ * GitHub one, which its stylesheet honours as well.
+ */
+const THEME_ANCHORS: ReadonlyArray<{ anchor: string; theme: Exclude<ImageTheme, ""> }> = [
+  { anchor: "#only-light", theme: "light" },
+  { anchor: "#only-dark", theme: "dark" },
+  { anchor: "#gh-light-mode-only", theme: "light" },
+  { anchor: "#gh-dark-mode-only", theme: "dark" },
+];
+
+/** Splits `logo.png#only-dark` into the file and the scheme it is addressed at. */
+export function splitImageTheme(src: string): {
+  path: string;
+  theme: ImageTheme;
+  anchor: string;
+} {
+  const lower = src.toLowerCase();
+  for (const { anchor, theme } of THEME_ANCHORS) {
+    if (lower.endsWith(anchor)) {
+      return { path: src.slice(0, -anchor.length), theme, anchor: src.slice(-anchor.length) };
+    }
+  }
+  return { path: src, theme: "", anchor: "" };
+}
+
+/**
+ * Puts the scheme back into the address. An image already written in the GitHub
+ * spelling keeps it while its scheme is unchanged — opening the form is not a
+ * reason to rewrite a line the author chose.
+ */
+export function imageSrcForTheme(path: string, theme: ImageTheme, previous = ""): string {
+  if (theme === "") {
+    return path;
+  }
+  const before = splitImageTheme(previous);
+  if (before.theme === theme) {
+    return path + before.anchor;
+  }
+  return path + (theme === "light" ? "#only-light" : "#only-dark");
+}
+
+const IMAGE_THEMES: Array<{ value: ImageTheme; label: string }> = [
+  { value: "", label: t("Both themes") },
+  { value: "light", label: t("Light theme only") },
+  { value: "dark", label: t("Dark theme only") },
+];
+
 export function openImagePopup(existing?: HTMLImageElement): void {
   if (!existing) {
     saveSelection();
@@ -347,16 +398,24 @@ export function openImagePopup(existing?: HTMLImageElement): void {
   // The address in src goes through the webview; the field shows (and the file
   // receives) the path as the author wrote it — data-md-src.
   const existingSrc = existing?.getAttribute("data-md-src") ?? existing?.getAttribute("src") ?? "";
-  src.value = existingSrc;
+  // The scheme lives in the anchor of the address; the field shows the file and
+  // the select below shows the scheme, so neither has to be typed by hand.
+  const existingImage = splitImageTheme(existingSrc);
+  src.value = existingImage.path;
   src.placeholder = "images/pic.png";
   const browse = document.createElement("button");
   browse.type = "button";
   browse.className = "secondary";
   browse.textContent = t("Choose file…");
+  // What the dialog answered: the path for the file, the address for the screen.
+  // Kept aside so the preview and the inserted picture both have something the
+  // webview can actually load.
+  let picked: PickedFile | null = null;
   browse.addEventListener("click", () => {
-    void pickFile("image").then((rel) => {
-      if (rel) {
-        src.value = rel;
+    void pickFile("image").then((answer) => {
+      if (answer.rel) {
+        picked = answer;
+        src.value = answer.rel;
         refreshPreview();
       }
     });
@@ -383,6 +442,13 @@ export function openImagePopup(existing?: HTMLImageElement): void {
   width.value = existing?.getAttribute("width") ?? "";
   width.placeholder = "300";
   widthLabel.appendChild(width);
+  const heightLabel = document.createElement("label");
+  heightLabel.textContent = t("Height");
+  const height = document.createElement("input");
+  height.type = "text";
+  height.value = existing?.getAttribute("height") ?? "";
+  height.placeholder = "150";
+  heightLabel.appendChild(height);
   const alignLabel = document.createElement("label");
   alignLabel.textContent = t("Alignment");
   const align = document.createElement("select");
@@ -394,20 +460,49 @@ export function openImagePopup(existing?: HTMLImageElement): void {
   }
   align.value = existing?.getAttribute("align") ?? "";
   alignLabel.appendChild(align);
-  row2.append(widthLabel, alignLabel);
+  row2.append(widthLabel, heightLabel, alignLabel);
   form.appendChild(row2);
+
+  const themeLabel = document.createElement("label");
+  themeLabel.textContent = t("Shown in");
+  const theme = document.createElement("select");
+  for (const item of IMAGE_THEMES) {
+    const o = document.createElement("option");
+    o.value = item.value;
+    o.textContent = item.label;
+    theme.appendChild(o);
+  }
+  theme.value = existingImage.theme;
+  themeLabel.appendChild(theme);
+  form.appendChild(themeLabel);
 
   const preview = document.createElement("div");
   preview.className = "vimg-preview";
   const thumb = document.createElement("img");
   preview.appendChild(thumb);
   form.appendChild(preview);
+  /**
+   * An address this webview can load for the file the field names. A relative
+   * path resolves against the webview's own base and simply 404s, so what goes
+   * on screen comes from the picture being edited or from the dialog's answer;
+   * a path typed by hand is tried as it is and the box hides if it fails.
+   *
+   * Never with the anchor: Material's stylesheet hides `#only-dark` in the light
+   * scheme, which would blank the very picture the author is looking at.
+   */
+  function loadableSrc(value: string): string {
+    if (picked && value === picked.rel && picked.webUri) {
+      return picked.webUri;
+    }
+    if (existing && value === existingImage.path) {
+      return splitImageTheme(existing.getAttribute("src") ?? "").path;
+    }
+    return value;
+  }
+
   function refreshPreview(): void {
     const value = src.value.trim();
-    // Relative paths resolve against the document, which the webview sees under
-    // its own base — reuse the src of the image being edited when it is the
-    // same file, otherwise let the browser try and hide the box on failure.
-    thumb.src = value === existingSrc && existing ? existing.src : value;
+    thumb.src = loadableSrc(value);
     preview.classList.toggle("empty", value === "");
   }
   thumb.addEventListener("error", () => preview.classList.add("empty"));
@@ -454,9 +549,15 @@ export function openImagePopup(existing?: HTMLImageElement): void {
     }
     closePopup();
     const img = existing ?? document.createElement("img");
-    img.setAttribute("src", value);
+    const address = imageSrcForTheme(value, theme.value as ImageTheme, existingSrc);
+    // Two addresses, as everywhere else: one the webview can display, one the
+    // file gets. Writing the author's path into src blanked the picture until
+    // the next full render — the block under the caret is not repatched.
+    img.setAttribute("src", loadableSrc(value) + splitImageTheme(address).anchor);
+    img.setAttribute("data-md-src", address);
     img.setAttribute("alt", alt.value);
     setOrRemove(img, "width", width.value.trim());
+    setOrRemove(img, "height", height.value.trim());
     setOrRemove(img, "align", align.value);
     if (existing) {
       markDirty(img);
@@ -481,9 +582,15 @@ function setOrRemove(el: Element, name: string, value: string): void {
 // by token, the same way saved images are. An empty path means the dialog was
 // dismissed.
 let pickAwaitToken: number | null = null;
-let pickResolve: ((rel: string) => void) | null = null;
+let pickResolve: ((picked: PickedFile) => void) | null = null;
 
-export function pickFile(kind: "image" | "snippet"): Promise<string> {
+/** The chosen file: the path for the document, the address for the screen. */
+export interface PickedFile {
+  rel: string;
+  webUri: string;
+}
+
+export function pickFile(kind: "image" | "snippet"): Promise<PickedFile> {
   return new Promise((resolve) => {
     pickAwaitToken = ++imageTokenSeq;
     pickResolve = resolve;
@@ -491,14 +598,14 @@ export function pickFile(kind: "image" | "snippet"): Promise<string> {
   });
 }
 
-export function onFilePicked(token: number, relPath: string): void {
+export function onFilePicked(token: number, relPath: string, webUri = ""): void {
   if (token !== pickAwaitToken) {
     return;
   }
   pickAwaitToken = null;
   const resolve = pickResolve;
   pickResolve = null;
-  resolve?.(relPath);
+  resolve?.({ rel: relPath, webUri });
 }
 
 // --- formula ---
@@ -679,12 +786,12 @@ function pumpImageQueue(): void {
   });
 }
 
-export function onImageSaved(token: number, relPath: string): void {
+export function onImageSaved(token: number, relPath: string, webUri = ""): void {
   if (token !== imageAwaitToken) {
     return;
   }
   imageAwaitToken = null;
-  insertImageAtRange(relPath);
+  insertImageAtRange(relPath, webUri);
   pumpImageQueue();
 }
 
@@ -697,9 +804,15 @@ export function onImageSaveFailed(token: number, _error: string): void {
   pumpImageQueue();
 }
 
-function insertImageAtRange(relPath: string): void {
+function insertImageAtRange(relPath: string, webUri: string): void {
   const img = document.createElement("img");
-  img.setAttribute("src", relPath);
+  // The pair a render produces (see rewriteHtmlAssetUrls): src is an address
+  // this webview may load, data-md-src the path that goes into the file. Putting
+  // the relative path into src left an empty frame — the webview cannot resolve
+  // it, and a catch-up patch does not replace the block the caret sits in, so
+  // the picture only appeared once something redrew the whole page.
+  img.setAttribute("src", webUri || relPath);
+  img.setAttribute("data-md-src", relPath);
   img.setAttribute("alt", "");
   const range = imageInsertRange;
   if (range && host.docEl.contains(range.startContainer)) {

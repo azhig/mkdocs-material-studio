@@ -20,6 +20,23 @@ function isLocal(value: string): boolean {
   return !/^[a-z][a-z0-9+.-]*:/i.test(v);
 }
 
+/**
+ * Splits a media link into the file it names and the trailing anchor. The two
+ * halves are treated differently on purpose: the query and the anchor mean
+ * nothing to a file on disk, but Material tells a light image from a dark one by
+ * the anchor alone (`img[src$="#only-dark"]`), so dropping it makes both show at
+ * once. The query has no such reader and is left out.
+ */
+export function splitAssetTarget(target: string): { path: string; hash: string } {
+  const hash = target.indexOf("#");
+  const withoutHash = hash < 0 ? target : target.slice(0, hash);
+  const query = withoutHash.indexOf("?");
+  return {
+    path: query < 0 ? withoutHash : withoutHash.slice(0, query),
+    hash: hash < 0 ? "" : target.slice(hash),
+  };
+}
+
 function decodeAttr(value: string): string {
   return value
     .replace(/&quot;/g, '"')

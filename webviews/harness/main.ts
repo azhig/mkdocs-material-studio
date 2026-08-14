@@ -194,7 +194,13 @@ function sendSiteChrome(): void {
  */
 function resolveMedia(html: string): string {
   const base = `${location.origin}${DOCS}${activePage}`;
-  return rewriteHtmlAssetUrls(html, (target) => new URL(target, base).pathname);
+  return rewriteHtmlAssetUrls(html, (target) => {
+    // The anchor rides along, the same way the extension keeps it: an image
+    // marked `#only-dark` is hidden by Material's own stylesheet, and a stand
+    // that dropped it would show both images of a theme pair at once.
+    const url = new URL(target, base);
+    return url.pathname + url.hash;
+  });
 }
 
 /** Loads a page of the sample project. */
@@ -304,7 +310,16 @@ function handleFromWebview(msg: unknown): void {
           .split("/")[1]
           ?.replace("+xml", "") || "png";
       log(`saveImage(#${token}): ${name} → assets/${base}.${ext}`);
-      toWebview?.({ type: "imageSaved", token, relPath: `assets/${base}.${ext}` });
+      toWebview?.({
+        type: "imageSaved",
+        token,
+        relPath: `assets/${base}.${ext}`,
+        // The provider answers with an address the webview may load; nothing was
+        // written to disk here, so the bytes that arrived stand in for the file.
+        // A stand that answered with the relative path alone would show an empty
+        // frame the extension does not have.
+        webUri: `data:${String(m.mime || "image/png")};base64,${String(m.data ?? "")}`,
+      });
       break;
     }
     case "pickFile": {
@@ -313,7 +328,12 @@ function handleFromWebview(msg: unknown): void {
       const token = Number(m.token);
       const rel = m.kind === "image" ? "assets/picked.png" : "includes/abbreviations.md";
       log(`pickFile(#${token}, ${String(m.kind)}) → ${rel}`);
-      toWebview?.({ type: "filePicked", token, relPath: rel });
+      toWebview?.({
+        type: "filePicked",
+        token,
+        relPath: rel,
+        webUri: m.kind === "image" ? `${location.origin}${DOCS}${rel}` : "",
+      });
       break;
     }
     case "iconNames": {

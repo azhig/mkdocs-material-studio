@@ -296,6 +296,32 @@ export function scheduleSync(delay = 350): void {
 const undoStack: SyncEdit[][] = [];
 const redoStack: SyncEdit[][] = [];
 
+/** Actions waiting for the answer to the batch in flight, oldest first. */
+const queuedBuilds: Array<() => SyncEdit[] | undefined> = [];
+
+/**
+ * Sends a batch built by an interface action — a call-out changing type, a code
+ * block changing language — and waits its turn if one is already in flight.
+ *
+ * Such a batch carries the version the editor last heard about. A second click
+ * made while the first answer is still travelling used to send the OLD version,
+ * the extension refused the whole batch as stale, and the click was simply lost:
+ * the type came back to what the first click had set. That is why the batch is
+ * BUILT here rather than passed in — by the time it is built, the answer to the
+ * previous one has arrived and both the version and the line numbers are the
+ * ones the file actually has.
+ */
+export function sendBuiltSync(build: () => SyncEdit[] | undefined): void {
+  if (syncInFlight) {
+    queuedBuilds.push(build);
+    return;
+  }
+  const edits = build();
+  if (edits && edits.length > 0) {
+    sendSync(edits);
+  }
+}
+
 /** The single point that sends a batch: it writes the inverse into the history. */
 export function sendSync(edits: SyncEdit[], history: "push" | "undo" | "redo" = "push"): void {
   if (edits.length === 0) {
@@ -546,6 +572,15 @@ export function finishRemote(): void {
   const after = afterSyncOnce;
   afterSyncOnce = undefined;
   after?.();
+  // One waiting action at a time: it sends a batch of its own, and the next one
+  // waits for THAT answer the same way.
+  const build = queuedBuilds.shift();
+  if (build) {
+    const edits = build();
+    if (edits && edits.length > 0) {
+      sendSync(edits);
+    }
+  }
 }
 
 /** The next patch must be a full render (a block appeared inside another one). */

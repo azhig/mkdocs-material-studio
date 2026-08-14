@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { readMkdocsConfig } from "./mkdocsConfig";
 import { rewriteCssUrls } from "./cssUrls";
+import { collectSections, resolveSectionPath } from "./monorepo";
 import type { MkdocsProject } from "./projectService";
 import { getLogger } from "../util/logger";
 
@@ -36,14 +37,20 @@ export async function loadExtraCss(
     if (config.extraCss.length === 0) {
       return empty;
     }
-    const docsDir = vscode.Uri.joinPath(project.root, config.docsDir);
+    // In a monorepo a stylesheet is addressed through the section it belongs to:
+    // `lib/stylesheets/extra.css` lives in `lib/docs/stylesheets/`, not in
+    // `docs/lib/stylesheets/`. Without sections this is the plain docs_dir join.
+    const sections = [...(await collectSections(project, config)).values()];
     const chunks: string[] = [];
     const files: vscode.Uri[] = [];
     for (const rel of config.extraCss) {
       if (/^(https?:)?\/\//i.test(rel)) {
         continue;
       }
-      const uri = vscode.Uri.joinPath(docsDir, rel);
+      const uri = vscode.Uri.joinPath(
+        project.root,
+        resolveSectionPath(rel, config.docsDir, sections),
+      );
       try {
         const bytes = await vscode.workspace.fs.readFile(uri);
         const css = Buffer.from(bytes).toString("utf8");
@@ -79,6 +86,11 @@ export function watchExtraCss(project: MkdocsProject, reload: () => void): vscod
         vscode.Uri.joinPath(project.configFile, ".."),
         path.basename(project.configFile.fsPath),
       ),
+    ),
+    // In a monorepo the list of stylesheets can change in an included config too —
+    // it is the one that says where the section's docs_dir is.
+    vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(project.root, "**/mkdocs.{yml,yaml}"),
     ),
   ];
   for (const w of watchers) {

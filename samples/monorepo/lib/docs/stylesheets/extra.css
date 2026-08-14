@@ -1,0 +1,5 @@
+/* The header colour of a custom theme: only the background is set, which is the
+   usual recipe — and the reason the letters on it have to be picked, not inherited. */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #16171d;
+}

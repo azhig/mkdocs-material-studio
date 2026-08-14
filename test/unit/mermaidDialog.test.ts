@@ -5,6 +5,7 @@ import {
   detectDiagramLanguage,
   initMermaidDialog,
   openMermaidDialog,
+  withDiagramLanguage,
 } from "../../webviews/visual/mermaidDialog";
 
 afterEach(() => {
@@ -24,6 +25,21 @@ describe("diagram language detection", () => {
 
   it("uses the fence language when the source is ambiguous", () => {
     expect(detectDiagramLanguage("Alice -> Bob", "plantuml")).toBe("plantuml");
+  });
+});
+
+describe("switching the renderer of an existing fence", () => {
+  it("rewrites the language and leaves the rest of the line alone", () => {
+    expect(withDiagramLanguage("```mermaid", "plantuml")).toBe("```plantuml");
+    expect(withDiagramLanguage("~~~~puml", "mermaid")).toBe("~~~~mermaid");
+    expect(withDiagramLanguage("   ```plantuml", "mermaid")).toBe("   ```mermaid");
+    expect(withDiagramLanguage("```", "plantuml")).toBe("```plantuml");
+  });
+
+  it("handles the braced info string, keeping its other parameters", () => {
+    expect(withDiagramLanguage('```{ .mermaid title="Flow" }', "plantuml")).toBe(
+      '```{ .plantuml title="Flow" }',
+    );
   });
 });
 

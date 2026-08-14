@@ -1,0 +1,3 @@
+# No nav here on purpose: a section without one is its files, exactly as MkDocs
+# builds a site with no nav.
+site_name: tools
