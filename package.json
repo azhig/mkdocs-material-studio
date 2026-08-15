@@ -603,7 +603,7 @@
     "shots": "node scripts/shoot-screenshots.mjs"
   },
   "devDependencies": {
-    "@eslint/js": "^9.13.0",
+    "@eslint/js": "^10.0.1",
     "@types/katex": "^0.16.8",
     "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
