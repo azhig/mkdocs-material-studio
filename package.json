@@ -607,7 +607,7 @@
     "@types/katex": "^0.16.8",
     "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.11.0",
+    "@types/node": "^26.2.0",
     "@types/vscode": "1.90.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vscode/codicons": "^0.0.45",
