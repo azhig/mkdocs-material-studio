@@ -472,5 +472,8 @@
   "Load the file": "Charger le fichier",
   "Keep my version": "Conserver ma version",
   "The page could not be written to the file.": "La page n'a pas pu être écrite dans le fichier.",
-  "Save (Cmd/Ctrl+S) — unsaved changes": "Enregistrer (Cmd/Ctrl+S) — modifications non enregistrées"
+  "Save (Cmd/Ctrl+S) — unsaved changes": "Enregistrer (Cmd/Ctrl+S) — modifications non enregistrées",
+  "This page was left with changes that were never saved.": "Cette page a été quittée avec des modifications jamais enregistrées.",
+  "Bring them back": "Les récupérer",
+  "Discard them": "Les abandonner"
 }

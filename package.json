@@ -2,7 +2,7 @@
   "name": "mkdocs-material-studio",
   "displayName": "MkDocs Material Studio",
   "description": "%extension.description%",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "azhig",
   "license": "MIT",
   "repository": {
@@ -320,6 +320,24 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%config.showToc%"
+        },
+        "mkdocsStudio.diagnostics": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.diagnostics%"
+        },
+        "mkdocsStudio.writeToDocument": {
+          "type": "string",
+          "enum": [
+            "live",
+            "onSave"
+          ],
+          "enumDescriptions": [
+            "%config.writeToDocument.enum.0%",
+            "%config.writeToDocument.enum.1%"
+          ],
+          "default": "live",
+          "markdownDescription": "%config.writeToDocument%"
         },
         "mkdocsStudio.pageBackground": {
           "type": "string",

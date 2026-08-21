@@ -121,6 +121,15 @@ Another term
 :material-rocket-launch: :fontawesome-brands-github: :octicons-heart-fill-24:
 :smile: :rocket:
 
+## Footnotes
+
+A claim that needs a source[^source], and a second note further down[^aside].
+
+[^source]: The note the claim points at — drawn by the engine at the foot of the
+    page, not written where it appears.
+
+[^aside]: A second one, so the tail has more than a single entry.
+
 ## Keys
 
 ++cmd+shift+p++ opens the command palette, ++ctrl+alt+del++ needs no

@@ -4,6 +4,61 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0 — 2026-08-21
+
+### Typing goes back into the buffer as you type
+
+0.3.0 held the page back until you saved it, to keep auto-save — and the
+formatters it runs — away from the file while you wrote. The real cause of the
+trouble turned out to be elsewhere (see 0.3.1), so the editor goes back to
+working the way a text editor does, and the other mode stays for the projects
+that need it.
+
+- **`mkdocsStudio.writeToDocument`** — `live` (the default): edits reach the VS
+  Code buffer as they happen, so the preview and the text tab follow along and
+  VS Code's own save, undo and “save?” prompt work as usual. `onSave`: the page
+  is written when you save it, for projects whose formatters rewrite the file on
+  every auto-save.
+- **Unsaved work is offered back, not restored.** Opening a page shows the file.
+  If an editor was closed with something unwritten, a bar offers to bring it back
+  or discard it — a page that silently disagrees with the file on disk is the
+  kind of thing that gets committed by accident.
+
+### The page survives whatever the engine adds to it
+
+- The rule that keeps the caret alive is now the same on both sides: a block
+  with a source line belongs to the document, and anything else — the footnote
+  tail, and whatever a project's own extensions draw — is the engine's, replaced
+  as a whole and left out of the count. 0.3.1 fixed this for footnotes; this
+  covers the rest.
+
+### Diagnostics
+
+- **`mkdocsStudio.diagnostics`** writes a detailed trace to the extension log
+  (**MkDocs: Show Log**): what was edited and sent, what was written to the
+  file, where the caret was before and after, and why a page was redrawn. It
+  records structure only — counts, tags, line numbers — and never a line of your
+  documents, so a log can be pasted into an issue.
+
+## 0.3.1 — 2026-08-21
+
+### A page with a footnote stopped losing the caret
+
+The engine draws two blocks of its own at the foot of a page that has notes: the
+separator and the list of note texts. Neither comes from a line of the file, so
+the editor leaves them out of its own list of blocks — but it was counting them
+in the fresh render it compared that list against. The two never matched, so
+every single edit fell through to redrawing the whole page, and the caret went
+to the top of the document with it. On a page with a footnote that happened on
+every keystroke, in every kind of block; two releases of caret repairs were
+aimed at the wrong thing.
+
+The tail is now recognised for what it is: kept out of the count and replaced as
+a whole, while the rest of the page is patched block by block with the caret
+untouched. A test pins the rule down — every block a render produces either
+carries a source line or is one of the engine's own — so a new service block
+cannot quietly bring the problem back.
+
 ## 0.3.0 — 2026-08-21
 
 ### The page is written to the file when you save it

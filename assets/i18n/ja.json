@@ -472,5 +472,8 @@
   "Load the file": "ファイルを読み込む",
   "Keep my version": "自分の版を残す",
   "The page could not be written to the file.": "ページをファイルに書き込めませんでした。",
-  "Save (Cmd/Ctrl+S) — unsaved changes": "保存 (Cmd/Ctrl+S) — 未保存の変更"
+  "Save (Cmd/Ctrl+S) — unsaved changes": "保存 (Cmd/Ctrl+S) — 未保存の変更",
+  "This page was left with changes that were never saved.": "このページには保存されなかった変更が残っています。",
+  "Bring them back": "元に戻す",
+  "Discard them": "破棄する"
 }

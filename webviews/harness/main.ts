@@ -248,6 +248,7 @@ function render(kind: "render" | "synced"): void {
   }
   toWebview({
     type: kind,
+    diagnostics: true, // the stand always traces: it exists to be watched
     html: resolveMedia(engine.render(text)),
     text,
     version,
@@ -278,6 +279,9 @@ function handleFromWebview(msg: unknown): void {
       if (typeof m.header === "boolean") chrome.header = m.header;
       if (typeof m.nav === "boolean") chrome.nav = m.nav;
       toWebview?.({ type: "chromeState", ...chrome });
+      break;
+    case "log":
+      log(`[page] ${String(m.text ?? "")}`);
       break;
     case "openPage":
       // The extension opens the file in the same editor; the harness reads it
