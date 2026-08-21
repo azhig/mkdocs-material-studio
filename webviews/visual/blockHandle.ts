@@ -510,7 +510,6 @@ function deleteBlockAction(block: HTMLElement): void {
   if (owner && owner !== block && owner.isConnected) {
     dirty.add(owner);
   }
-  st.set(t("Changed…"));
   scheduleSync();
 }
 

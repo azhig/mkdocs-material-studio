@@ -6,7 +6,7 @@
 // Tab in the last cell — which adds a row by writing a line into the file and
 // waits for the render to put the caret in it.
 
-import { dirty, doc, docLines, rangeOf, scheduleSync, setAfterSync, st } from "./editorCore";
+import { dirty, doc, docLines, rangeOf, scheduleSync, setAfterSync } from "./editorCore";
 import { t } from "../shared/i18n";
 
 /** What the table operations need from the editor around them. */
@@ -127,7 +127,6 @@ export function updateTableMenu(): void {
     if (parent && parent !== table && parent.isConnected) {
       dirty.add(parent);
     }
-    st.set(t("Changed…"));
     scheduleSync();
   });
 
@@ -238,7 +237,6 @@ function tableOp(table: HTMLTableElement, op: string): void {
   if (table.isConnected) {
     dirty.add(table);
   }
-  st.set(t("Changed…"));
   scheduleSync();
   tableMenu?.remove();
   tableMenu = null;

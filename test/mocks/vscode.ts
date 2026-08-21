@@ -204,11 +204,14 @@ export class FakeTextDocument {
 
   /** Writes the text out, so a test can check the file rather than the buffer. */
   async save(): Promise<boolean> {
-    // Written out when the test gave the document a real path; a document made
-    // up for a test has none, and saving it is still a save.
-    await fs.writeFile(this.uri.fsPath, this.text, "utf8").catch(() => undefined);
+    // The state changes before the write, not after it: a test waits for the
+    // handler it called, and a disk is slower than that — asserting on `saved`
+    // used to pass locally and fail on CI. The file is still written, because
+    // the tree tests read the mkdocs.yml a save produced; a document at a
+    // made-up path has nowhere to go, and saving it is still a save.
     this.dirty = false;
     this.saved = true;
+    await fs.writeFile(this.uri.fsPath, this.text, "utf8").catch(() => undefined);
     return true;
   }
 

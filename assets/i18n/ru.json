@@ -468,9 +468,9 @@
   "← Back": "← Назад",
   "Site settings — mkdocs.yml": "Настройки сайта — mkdocs.yml",
   "Save (Cmd/Ctrl+S)": "Сохранить (Cmd/Ctrl+S)",
-  "Unsaved changes": "Есть несохранённые изменения",
   "This file was changed outside the editor.": "Файл изменён вне редактора.",
   "Load the file": "Загрузить файл",
   "Keep my version": "Оставить мою версию",
-  "The page could not be written to the file.": "Не удалось записать страницу в файл."
+  "The page could not be written to the file.": "Не удалось записать страницу в файл.",
+  "Save (Cmd/Ctrl+S) — unsaved changes": "Сохранить (Cmd/Ctrl+S) — есть несохранённые изменения"
 }

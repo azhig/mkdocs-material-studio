@@ -461,21 +461,34 @@ function saveNow(): void {
 }
 
 /**
- * Whether the page holds anything the file does not. The status line is written
- * from here rather than from whichever message happened to arrive last: a
- * render and a save state both end up there, and what the author needs to know
- * is whether their writing is in the file.
+ * Whether the page holds anything the file does not.
+ *
+ * It shows on the save button — a dot, and the button in the accent colour —
+ * and nowhere else. The status line used to narrate the sync as well (“Changed…”,
+ * “Syncing…”, “Ready”), which is three names for one state and a text that
+ * flickers on every keystroke; what an author needs to know is whether their
+ * writing is in the file, and that is one thing, shown in one place.
  */
 let unsavedWork = false;
 
-function refreshStatus(justSaved = false): void {
+/** Cleared once the page is on screen: “Loading…” has nothing to say after that. */
+let booted = false;
+
+function refreshStatus(): void {
+  if (!booted) {
+    booted = true;
+    st.set("");
+  }
   document.body.classList.toggle("v-unsaved", unsavedWork);
-  st.set(unsavedWork ? t("Unsaved changes") : justSaved ? t("Saved ✓") : t("Ready"));
+  const save = document.getElementById("tbSave");
+  if (save) {
+    save.title = unsavedWork ? t("Save (Cmd/Ctrl+S) — unsaved changes") : t("Save (Cmd/Ctrl+S)");
+  }
 }
 
-function showSaveState(unsaved: boolean, justSaved: boolean): void {
+function showSaveState(unsaved: boolean, _justSaved: boolean): void {
   unsavedWork = unsaved;
-  refreshStatus(justSaved);
+  refreshStatus();
 }
 
 /** The bar that appears when the file was changed by someone else. */

@@ -142,12 +142,10 @@ body {
   padding: 0 6px;
   white-space: nowrap;
 }
-/* Unsaved work is worth seeing without looking for it: the status stops being
-   a faded aside, and the save button gets the accent colour. */
-body.v-unsaved #vt #vstatus {
-  opacity: 1;
-  color: var(--md-accent-fg-color, #526cfe);
-}
+/* Unsaved work shows in one place and without words: the save button takes the
+   accent colour, and its tooltip says what that means. The status line used to
+   narrate the sync instead — three names for one state, rewritten on every
+   keystroke, in the corner of the eye. */
 body.v-unsaved #vt #tbSave {
   color: var(--md-accent-fg-color, #526cfe);
 }
