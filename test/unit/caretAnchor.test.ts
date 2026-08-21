@@ -127,6 +127,37 @@ describe("the caret across a full render", () => {
     expect(caretAt()).toEqual({ index: 2, before: "See " });
   });
 
+  it("does not chase an empty line, since every empty line reads alike", () => {
+    // A blank paragraph matches every other blank paragraph in the document —
+    // the draft at the end of a card, the line a Return has just opened. Going
+    // by the text would send the caret to whichever blank line is nearest;
+    // position is all there is to go on.
+    render(
+      '<p data-src-line="0"></p>' +
+        '<p data-src-line="2">Alpha.</p>' +
+        '<p data-src-line="4"></p>' +
+        '<p data-src-line="6">Beta.</p>',
+    );
+    const range = document.createRange();
+    range.selectNodeContents(docEl.children[2]);
+    range.collapse(true);
+    document.getSelection()?.removeAllRanges();
+    document.getSelection()?.addRange(range);
+    const anchor = takeCaretAnchor(docEl);
+
+    // Someone wrote into that very line from outside; the blank ones left are
+    // elsewhere in the document.
+    render(
+      '<p data-src-line="0"></p>' +
+        '<p data-src-line="2">Alpha.</p>' +
+        '<p data-src-line="4">Filled in from outside.</p>' +
+        '<p data-src-line="6">Beta.</p>',
+    );
+
+    expect(restoreCaretAnchor(docEl, anchor)).toBe(true);
+    expect(caretAt()).toEqual({ index: 2, before: "" });
+  });
+
   it("stays in its block when the render rewrote the line itself", () => {
     render(PAGE);
     caretInto(2, 15);

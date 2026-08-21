@@ -106,7 +106,7 @@ import {
   initBlockHandle,
   repositionHandle,
 } from "./blockHandle";
-import { restoreCaretAnchor, takeCaretAnchor } from "./caretAnchor";
+import { restoreCaretAnchor, takeCaretAnchor, type CaretAnchor } from "./caretAnchor";
 import { initIconPicker, openIconPicker } from "./iconPicker";
 import { initMathDialog, openMathDialog } from "./mathDialog";
 import { initMermaidDialog, openMermaidDialog, withDiagramLanguage } from "./mermaidDialog";
@@ -484,17 +484,23 @@ function applyExternalRender(html: string, text: string, ver: number): void {
     adoptText(text, ver);
     return;
   }
-  applyRender(html, text, ver);
+  // Patch it in block by block. Redrawing the whole document for someone else's
+  // edit is what put the caret at the top of the page — and it also threw away
+  // whatever had been typed into the caret's block but not yet sent, since the
+  // markup that arrives is the file as it stands on disk. The patch leaves that
+  // block alone and replaces the rest; it falls back to a full render when the
+  // structure no longer lines up, and only then is the caret's place needed.
+  //
+  // The anchor is taken here and nowhere else. A render WE asked for is a
+  // different matter: the caret belongs wherever the edit has just put it (the
+  // paragraph a Return opened, the block that was inserted), and an anchor from
+  // before that edit would drag it back to the line it left.
+  applyPatches(html, text, ver, takeCaretAnchor(docEl));
 }
 
-/** Full render: resets the DOM — the caret is put back from its anchor. */
-function applyRender(html: string, text: string, ver: number): void {
+/** Full render: resets the DOM. `caret` is where it stood, for an outside edit. */
+function applyRender(html: string, text: string, ver: number, caret: CaretAnchor | null): void {
   const tabs = openTabs(docEl);
-  // Taken before the blocks are replaced: the nodes the selection points at are
-  // about to be detached, and the browser answers that by dropping the caret to
-  // the start of the editor — the page jumps to the top and the typing that
-  // follows lands in the first paragraph of the file.
-  const caret = takeCaretAnchor(docEl);
   mutedRemote(() => {
     clearForRender();
     adoptText(text, ver);
@@ -517,14 +523,22 @@ function applyRender(html: string, text: string, ver: number): void {
 
 /**
  * A “catch-up” patch after our edit: replace the blocks with the fresh render,
- * except for the block holding the cursor and the live editors.
+ * except for the block holding the cursor and the live editors. `caret` is
+ * where the caret stood before an outside edit, for the full render this falls
+ * back to; our own catch-up passes nothing, since the edit has already put the
+ * caret where it belongs.
  */
-function applyPatches(html: string, text: string, ver: number): void {
+function applyPatches(
+  html: string,
+  text: string,
+  ver: number,
+  caret: CaretAnchor | null = null,
+): void {
   if (takeFullRenderRequest()) {
     // Nested insertion: redraw everything so that the new block inside the focus
     // block becomes visible (applyRender itself runs afterSyncOnce — placing the
     // cursor).
-    applyRender(html, text, ver);
+    applyRender(html, text, ver, caret);
     return;
   }
   adoptText(text, ver);
@@ -538,7 +552,7 @@ function applyPatches(html: string, text: string, ver: number): void {
   if (fresh.length !== ours.length) {
     // The structure diverged (for example, a paste with empty lines) — the safe
     // path is a full render.
-    applyRender(html, text, ver);
+    applyRender(html, text, ver, caret);
     return;
   }
 
