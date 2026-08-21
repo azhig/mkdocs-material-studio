@@ -20,6 +20,16 @@ const { FakeTextDocument, __reset } = vscode as unknown as typeof import("../moc
 let root: string;
 let render: ReturnType<typeof createFallbackRenderer>;
 
+/**
+ * The address the fake webview gives a file of the project — built by the same
+ * translation the renderer uses. A path written out by hand passes on macOS and
+ * fails on Windows, where `path.join` produces backslashes and a drive letter
+ * while the Uri keeps forward slashes.
+ */
+function webviewSrc(...segments: string[]): string {
+  return `https://webview.test${vscode.Uri.file(path.join(root, ...segments)).path}`;
+}
+
 /** Renders the text as a page of docs/ and returns its HTML. */
 async function html(markdown: string): Promise<string> {
   const doc = new FakeTextDocument(
@@ -50,16 +60,14 @@ afterEach(async () => {
 describe("an image addressed at one color scheme", () => {
   it("keeps its anchor once the link points at the file", async () => {
     const out = await html("![Logo](logo.png#only-dark)\n");
-    expect(out).toContain(
-      `src="https://webview.test${path.join(root, "docs", "logo.png")}#only-dark"`,
-    );
+    expect(out).toContain(`src="${webviewSrc("docs", "logo.png")}#only-dark"`);
   });
 
   it("keeps the GitHub spelling of the same thing", async () => {
     // Checked on src, not anywhere in the HTML: data-md-src carries the anchor
     // too, and a test that settled for that would pass with the anchor lost.
     expect(await html("![Logo](logo.png#gh-dark-mode-only)\n")).toContain(
-      `src="https://webview.test${path.join(root, "docs", "logo.png")}#gh-dark-mode-only"`,
+      `src="${webviewSrc("docs", "logo.png")}#gh-dark-mode-only"`,
     );
   });
 
@@ -74,7 +82,7 @@ describe("an image addressed at one color scheme", () => {
 describe("an ordinary image", () => {
   it("gets no anchor of its own", async () => {
     const out = await html("![Logo](logo.png)\n");
-    expect(out).toContain(`src="https://webview.test${path.join(root, "docs", "logo.png")}"`);
+    expect(out).toContain(`src="${webviewSrc("docs", "logo.png")}"`);
     expect(out).not.toContain("#");
   });
 

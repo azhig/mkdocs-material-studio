@@ -82,9 +82,3 @@ happy-dom is not a browser: `getBoundingClientRect` and `offsetHeight` return 0,
 `document.execCommand` is undefined, and there is no `caretRangeFromPoint`.
 Anything that depends on layout or on the caret is verified in the harness, not
 in a unit test.
-
-## History
-
-The repository is deliberately a **single commit**. Changes are amended into it
-and force-pushed while the extension is unpublished; the pre-publication history
-is kept locally under the tag `archive/pre-publication`.
