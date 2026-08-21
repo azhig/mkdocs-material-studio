@@ -28,15 +28,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const configPanel = new ConfigPanel(context, projects);
 
   // Block-based visual editor (CustomTextEditor, opened on demand).
+  const visualEditor = new VisualEditorProvider(context, projects, fallbackRender, insertPanel);
   context.subscriptions.push(
-    vscode.window.registerCustomEditorProvider(
-      VisualEditorProvider.viewType,
-      new VisualEditorProvider(context, projects, fallbackRender, insertPanel),
-      {
-        webviewOptions: { retainContextWhenHidden: true },
-        supportsMultipleEditorsPerDocument: true,
-      },
-    ),
+    vscode.window.registerCustomEditorProvider(VisualEditorProvider.viewType, visualEditor, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: true,
+    }),
+    // Ctrl/Cmd+S in the visual editor. The page is a draft until it is saved,
+    // so the document is not dirty and the built-in save has nothing to write —
+    // this command is what puts the page into the file.
+    vscode.commands.registerCommand("mkdocsStudio.saveVisual", () => visualEditor.saveFocused()),
   );
 
   // Clicking a block in the lightweight preview: admonition/code open in the

@@ -173,6 +173,9 @@
       <button id="tbUndo" title="Undo"><span class="codicon codicon-discard"></span></button>
       <button id="tbRedo" title="Redo"><span class="codicon codicon-redo"></span></button>
       <div class="grow"></div>
+      <button id="tbSave" title="Save (Cmd/Ctrl+S)">
+        <span class="codicon codicon-save"></span>
+      </button>
       <span id="vstatus">Loading…</span>
       <button id="tbSettings" title="Editor settings">
         <span class="codicon codicon-settings-gear"></span>
@@ -195,6 +198,12 @@
       <button id="tbAsText" title="Open as text">
         <span class="codicon codicon-go-to-file"></span>
       </button>
+    </div>
+    <div id="voutside" class="v-bar" hidden>
+      <span class="codicon codicon-warning"></span>
+      <span class="v-bar-text">This file was changed outside the editor.</span>
+      <button id="vOutsideReload" class="secondary">Load the file</button>
+      <button id="vOutsideKeep" class="secondary">Keep my version</button>
     </div>
     <header id="vhead" class="mv-head"></header>
     <div id="vbody">

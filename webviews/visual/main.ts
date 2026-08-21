@@ -128,6 +128,7 @@ import {
   noteCatchUp,
   rangeOf,
   redoOnce,
+  runSyncNowThen,
   scheduleSync,
   sendSync,
   st,
@@ -320,6 +321,12 @@ window.addEventListener("message", (e: MessageEvent) => {
     case "subRendered":
       onSubRendered(Number(msg.id), String(msg.html));
       break;
+    case "saveState":
+      showSaveState(Boolean(msg.unsaved), Boolean(msg.justSaved));
+      break;
+    case "outsideChange":
+      showOutsideBar(true);
+      break;
     case "rejected":
       // The batch is stale (an external edit): a full render will arrive separately.
       cancelSync();
@@ -442,6 +449,56 @@ const chromeHooks: SiteChromeHooks = {
   openSettings: () => api.postMessage({ type: "openConfig" }),
 };
 
+/**
+ * Writes the page into the file. Everything typed lives in the editor until
+ * this happens — that is what keeps the project's formatters from running (and
+ * rewriting the file under the caret) between one word and the next.
+ */
+function saveNow(): void {
+  // Anything still waiting in the batch timer goes first, so what is saved is
+  // what is on screen and not what it was a moment ago.
+  runSyncNowThen(() => api.postMessage({ type: "save" }));
+}
+
+/**
+ * Whether the page holds anything the file does not.
+ *
+ * It shows on the save button — a dot, and the button in the accent colour —
+ * and nowhere else. The status line used to narrate the sync as well (“Changed…”,
+ * “Syncing…”, “Ready”), which is three names for one state and a text that
+ * flickers on every keystroke; what an author needs to know is whether their
+ * writing is in the file, and that is one thing, shown in one place.
+ */
+let unsavedWork = false;
+
+/** Cleared once the page is on screen: “Loading…” has nothing to say after that. */
+let booted = false;
+
+function refreshStatus(): void {
+  if (!booted) {
+    booted = true;
+    st.set("");
+  }
+  document.body.classList.toggle("v-unsaved", unsavedWork);
+  const save = document.getElementById("tbSave");
+  if (save) {
+    save.title = unsavedWork ? t("Save (Cmd/Ctrl+S) — unsaved changes") : t("Save (Cmd/Ctrl+S)");
+  }
+}
+
+function showSaveState(unsaved: boolean, _justSaved: boolean): void {
+  unsavedWork = unsaved;
+  refreshStatus();
+}
+
+/** The bar that appears when the file was changed by someone else. */
+function showOutsideBar(show: boolean): void {
+  const bar = document.getElementById("voutside");
+  if (bar) {
+    bar.hidden = !show;
+  }
+}
+
 /** Redraws the header and the page panel to match the current button state. */
 function refreshSiteChrome(): void {
   const head = document.getElementById("vhead");
@@ -517,7 +574,7 @@ function applyRender(html: string, text: string, ver: number, caret: CaretAnchor
   // the cursor in the new block) has the last word on where the caret goes.
   restoreCaretAnchor(docEl, caret);
   repositionHandle(); // blocks were recreated — the handle either moves or disappears
-  st.set(t("Ready"));
+  refreshStatus();
   finishRemote();
 }
 
@@ -615,7 +672,7 @@ function applyPatches(
   refreshToc();
   decorateAnnotations();
   repositionHandle();
-  st.set(t("Saved ✓"));
+  refreshStatus();
   finishRemote();
 }
 
@@ -1517,6 +1574,15 @@ function wireToolbar(): void {
   on("tbSiteNav", () => toggleSiteChrome("nav"));
   on("tbToc", () => toggleToc());
   on("tbAsText", () => api.postMessage({ type: "openAsText" }));
+  on("tbSave", () => saveNow());
+  document.getElementById("vOutsideReload")?.addEventListener("click", () => {
+    showOutsideBar(false);
+    api.postMessage({ type: "outsideChange", action: "reload" });
+  });
+  document.getElementById("vOutsideKeep")?.addEventListener("click", () => {
+    showOutsideBar(false);
+    api.postMessage({ type: "outsideChange", action: "keep" });
+  });
   renderPinnedButtons();
   syncViewButtons();
   applyToolbarTips();
@@ -1830,6 +1896,11 @@ function hideTip(): void {
 // nothing typed is lost by a reflex keypress. With nothing open it leaves the
 // text and marks blocks, each press one container wider.
 document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "s" || e.key === "S")) {
+    e.preventDefault();
+    saveNow();
+    return;
+  }
   if (e.key !== "Escape" || cancelBlockDrag() || hasActivePopup()) {
     return;
   }

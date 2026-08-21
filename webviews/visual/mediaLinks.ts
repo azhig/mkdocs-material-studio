@@ -773,7 +773,7 @@ function pumpImageQueue(): void {
   }
   const next = imageQueue.shift();
   if (!next) {
-    st.set(t("Ready"));
+    st.set("");
     return;
   }
   imageAwaitToken = ++imageTokenSeq;

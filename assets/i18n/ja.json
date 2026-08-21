@@ -466,5 +466,11 @@
   "“View source” button": "「ソースを表示」ボタン",
   "…": "…",
   "← Back": "← 戻る",
-  "Site settings — mkdocs.yml": "サイト設定 — mkdocs.yml"
+  "Site settings — mkdocs.yml": "サイト設定 — mkdocs.yml",
+  "Save (Cmd/Ctrl+S)": "保存 (Cmd/Ctrl+S)",
+  "This file was changed outside the editor.": "このファイルはエディターの外で変更されました。",
+  "Load the file": "ファイルを読み込む",
+  "Keep my version": "自分の版を残す",
+  "The page could not be written to the file.": "ページをファイルに書き込めませんでした。",
+  "Save (Cmd/Ctrl+S) — unsaved changes": "保存 (Cmd/Ctrl+S) — 未保存の変更"
 }

@@ -1,5 +1,6 @@
 {
   "extension.description": "Предпросмотр и визуальное редактирование документации MkDocs Material прямо в VS Code",
+  "command.saveVisual": "Сохранить страницу (визуальный редактор)",
   "command.openPreview": "Открыть предпросмотр",
   "command.openPreviewToSide": "Открыть предпросмотр сбоку",
   "command.showLogs": "Показать журнал",

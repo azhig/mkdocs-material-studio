@@ -20,10 +20,8 @@ import {
   scheduleSync,
   sendSync,
   setAfterSync,
-  st,
 } from "./editorCore";
 import type { SyncEdit } from "./syncModel";
-import { t } from "../shared/i18n";
 
 /** What these operations need from the editor around them. */
 export interface SelectionOpsHost {
@@ -196,7 +194,6 @@ export function markDirtyAtSelection(): void {
   const block = host.currentBlock();
   if (block) {
     dirty.add(block);
-    st.set(t("Changed…"));
     scheduleSync();
   }
 }

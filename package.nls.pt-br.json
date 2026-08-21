@@ -1,5 +1,6 @@
 {
   "extension.description": "Visualize e edite visualmente a documentação do MkDocs Material diretamente no VS Code",
+  "command.saveVisual": "Salvar a página (editor visual)",
   "command.openPreview": "Abrir Visualização",
   "command.openPreviewToSide": "Abrir a visualização ao lado",
   "command.showLogs": "Mostrar Log",

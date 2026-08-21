@@ -1,5 +1,6 @@
 {
   "extension.description": "Preview and visually edit MkDocs Material documentation right inside VS Code",
+  "command.saveVisual": "Save Page (Visual Editor)",
   "command.openPreview": "Open Preview",
   "command.openPreviewToSide": "Open Preview to the Side",
   "command.showLogs": "Show Log",

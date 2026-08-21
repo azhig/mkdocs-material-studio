@@ -19,6 +19,7 @@ import { externalTarget, findLinkTarget, isMarkdownPath, parseDocLink } from "..
 import { snippetInsertPath } from "../preview/snippetSource";
 import { extensionIconPack } from "../core/extensionIcons";
 import { parseSyncEdits } from "./syncEdits";
+import { applySyncEdits, draftEdit, isDraftDirty } from "./draftText";
 import { lineRange, planEditOps, type DocPosition, type LineDoc } from "./editPlan";
 import { imageBaseName, imageCandidate, imageExt } from "./imageNames";
 import { affectsLanguage, currentLanguage, t, translations } from "../core/i18n";
@@ -46,6 +47,36 @@ interface OwnEdits {
 }
 
 /**
+ * What one open visual editor is working on.
+ *
+ * The page is drawn from `draft`, not from the document. Writing every
+ * keystroke into the TextDocument is what VS Code's own editors do, and it is
+ * what made this one unusable: the file went dirty several times a second, and
+ * with auto-save on, each of those saves ran the project's formatters — whose
+ * edits came back as somebody else's and redrew the page under the author's
+ * hands. The document is written once, when the author saves.
+ */
+interface Session {
+  /** The text the page shows: the file plus everything not yet saved. */
+  draft: string;
+  /** The document's text as of the last moment draft and document agreed. */
+  base: string;
+  /** Revision of the draft — the webview quotes it back with every batch. */
+  rev: number;
+  /** The page this editor is open on, for the save command to find it by. */
+  readonly documentUri: string;
+  own: OwnEdits;
+}
+
+/** Where an unsaved page waits while its editor is closed. */
+const DRAFT_STORE = "mkdocsStudio.drafts";
+
+interface StoredDraft {
+  draft: string;
+  base: string;
+}
+
+/**
  * The visual editor (M10) — a CustomTextEditorProvider.
  *
  * The webview holds a contenteditable document; edits arrive as batches of
@@ -58,6 +89,9 @@ interface OwnEdits {
  */
 export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   public static readonly viewType = "mkdocsStudio.visualEditor";
+
+  /** The open editors, so the save command can find the one it was invoked on. */
+  private readonly sessions = new Map<vscode.WebviewPanel, Session>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -95,17 +129,24 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // until it has. The counter covers exactly that window; the set covers the
     // other order. A foreign edit landing inside the window is not lost — the
     // “synced” that follows carries the current text either way.
-    const own: OwnEdits = { versions: new Set<number>(), applying: 0 };
+    const session: Session = {
+      draft: document.getText(),
+      base: document.getText(),
+      rev: 0,
+      documentUri: document.uri.toString(),
+      own: { versions: new Set<number>(), applying: 0 },
+    };
+    this.sessions.set(panel, session);
 
-    const fullRender = debounce(() => void this.postRender(panel, document, "render"), 250);
+    const outside = debounce(() => void this.onOutsideChange(panel, document, session), 250);
     const changeSub = vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.toString() !== document.uri.toString()) {
         return;
       }
-      if (own.applying > 0 || own.versions.delete(e.document.version)) {
-        return; // our own edit — the webview gets a targeted "synced" instead
+      if (session.own.applying > 0 || session.own.versions.delete(e.document.version)) {
+        return; // our own save — the webview already has this text
       }
-      fullRender();
+      outside();
     });
     // The inline formatting placement setting is applied on the fly.
     const cfgSub = vscode.workspace.onDidChangeConfiguration((e) => {
@@ -126,7 +167,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       }
       // The palette travels with the render message — a new color needs a redraw.
       if (affectsPalette(e)) {
-        fullRender();
+        void this.postRender(panel, document, "render");
       }
     });
     // Project styles (extra_css) and the site layout are applied on the fly:
@@ -152,6 +193,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     });
     panel.onDidDispose(() => {
       disposed = true;
+      this.sessions.delete(panel);
       changeSub.dispose();
       cfgSub.dispose();
       watchers.forEach((w) => w.dispose());
@@ -161,21 +203,29 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // become an unhandled rejection, and the editor would go quiet with no
     // trace of why.
     panel.webview.onDidReceiveMessage((msg) => {
-      this.onMessage(msg, document, panel, own).catch((err: unknown) => {
+      this.onMessage(msg, document, panel, session).catch((err: unknown) => {
         const type = (msg as { type?: unknown })?.type;
         getLogger().error(`Visual editor: message "${String(type)}" failed — ${String(err)}`);
       });
     });
   }
 
+  /**
+   * Draws the page from the draft — the text the author is working on, which
+   * reaches the document only when they save.
+   */
   private async postRender(
     panel: vscode.WebviewPanel,
     document: vscode.TextDocument,
     type: "render" | "synced",
   ): Promise<void> {
+    const session = this.sessions.get(panel);
+    if (!session) {
+      return;
+    }
     try {
       const project = await this.projects.findProjectFor(document.uri);
-      const { html, palette } = await this.render(document, project, undefined, (uri) =>
+      const { html, palette } = await this.render(document, project, session.draft, (uri) =>
         panel.webview.asWebviewUri(uri).toString(),
       );
       void panel.webview.postMessage({
@@ -183,29 +233,194 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         html,
         palette,
         background: pageBackground(document.uri),
-        text: document.getText(),
-        version: document.version,
+        text: session.draft,
+        version: session.rev,
       });
     } catch (err) {
       getLogger().error(`Visual editor: render failed — ${String(err)}`);
     }
   }
 
+  /** Tells the webview whether there is anything to save. */
+  private postSaveState(panel: vscode.WebviewPanel, session: Session, justSaved = false): void {
+    void panel.webview.postMessage({
+      type: "saveState",
+      unsaved: isDraftDirty(session.base, session.draft),
+      justSaved,
+    });
+  }
+
+  /**
+   * Writes the draft into the document and saves the file — the one moment the
+   * document is touched. One edit, so one undo step, and the formatters that
+   * run on save get their turn here instead of in the middle of a word.
+   *
+   * Returns false when the write was refused; the caller then leaves the draft
+   * where it is rather than carrying on as if the file had it.
+   */
+  private async saveDraft(
+    document: vscode.TextDocument,
+    panel: vscode.WebviewPanel,
+    session: Session,
+  ): Promise<boolean> {
+    const edit = draftEdit(document.getText(), session.draft);
+    if (edit) {
+      const workspaceEdit = new vscode.WorkspaceEdit();
+      for (const op of planEditOps(lineDoc(document), [edit])) {
+        if (op.kind === "insert") {
+          workspaceEdit.insert(document.uri, position(op.at), op.text);
+        } else if (op.kind === "delete") {
+          workspaceEdit.delete(document.uri, range(op.start, op.end));
+        } else {
+          workspaceEdit.replace(document.uri, range(op.start, op.end), op.text);
+        }
+      }
+      session.own.applying += 1;
+      let ok: boolean;
+      try {
+        ok = await vscode.workspace.applyEdit(workspaceEdit);
+      } finally {
+        session.own.applying -= 1;
+      }
+      if (!ok) {
+        getLogger().warn("Visual editor: applyEdit returned false while saving");
+        return false;
+      }
+      session.own.versions.add(document.version);
+      if (session.own.versions.size > 64) {
+        session.own.versions.clear();
+      }
+    }
+    if (document.isDirty) {
+      await document.save();
+    }
+    // What the file holds now is what the page shows — including anything a
+    // formatter changed on the way there, which is adopted rather than fought
+    // over: this is the moment the author asked for the file to be written.
+    session.draft = document.getText();
+    session.base = session.draft;
+    await this.storeDraft(document, undefined);
+    await this.postRender(panel, document, "synced");
+    this.postSaveState(panel, session, true);
+    return true;
+  }
+
+  /**
+   * Save asked for from outside the webview — the command behind Ctrl/Cmd+S.
+   * The visible panel is the one the author is looking at; with several open on
+   * the same page, the active one is the only one that can have the focus.
+   */
+  async saveFocused(): Promise<boolean> {
+    for (const [panel, session] of this.sessions) {
+      if (panel.active) {
+        const document = await vscode.workspace.openTextDocument(
+          vscode.Uri.parse(session.documentUri),
+        );
+        return this.saveDraft(document, panel, session);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The file changed and it was not us. With nothing unsaved the change is
+   * simply adopted and the page picks it up block by block. With unsaved work
+   * in the editor nothing is touched: the webview puts up a bar and the author
+   * decides, since either answer discards somebody's writing.
+   */
+  private async onOutsideChange(
+    panel: vscode.WebviewPanel,
+    document: vscode.TextDocument,
+    session: Session,
+  ): Promise<void> {
+    const fileText = document.getText();
+    if (fileText === session.draft) {
+      session.base = fileText; // it changed into what we already show
+      this.postSaveState(panel, session);
+      return;
+    }
+    if (!isDraftDirty(session.base, session.draft)) {
+      session.draft = fileText;
+      session.base = fileText;
+      session.rev += 1;
+      await this.postRender(panel, document, "synced");
+      return;
+    }
+    void panel.webview.postMessage({ type: "outsideChange" });
+  }
+
+  /** The author's answer to that bar. */
+  private async resolveOutsideChange(
+    document: vscode.TextDocument,
+    panel: vscode.WebviewPanel,
+    session: Session,
+    action: string,
+  ): Promise<void> {
+    if (action === "reload") {
+      session.draft = document.getText();
+      session.base = session.draft;
+      session.rev += 1;
+      await this.storeDraft(document, undefined);
+      this.postSaveState(panel, session);
+      await this.postRender(panel, document, "render");
+      return;
+    }
+    // Keeping the draft: the file as it now stands is what the next save writes
+    // over, so the author's version wins for the lines they changed.
+    session.base = document.getText();
+    this.postSaveState(panel, session);
+  }
+
+  /**
+   * Unsaved work outlives the tab. It is kept per document and offered back
+   * when the page is opened again — closing an editor by accident is not a
+   * reason to lose an afternoon's writing, and nothing here writes to the file
+   * behind the author's back.
+   */
+  private async storeDraft(document: vscode.TextDocument, value: StoredDraft | undefined) {
+    const key = document.uri.toString();
+    const all = {
+      ...this.context.workspaceState.get<Record<string, StoredDraft>>(DRAFT_STORE, {}),
+    };
+    if (value) {
+      all[key] = value;
+    } else {
+      delete all[key];
+    }
+    await this.context.workspaceState.update(DRAFT_STORE, all);
+  }
+
+  private storedDraft(document: vscode.TextDocument): StoredDraft | undefined {
+    return this.context.workspaceState.get<Record<string, StoredDraft>>(DRAFT_STORE, {})[
+      document.uri.toString()
+    ];
+  }
+
   private async onMessage(
     msg: unknown,
     document: vscode.TextDocument,
     panel: vscode.WebviewPanel,
-    own: OwnEdits,
+    session: Session,
   ): Promise<void> {
     const m = msg as { type?: string; [k: string]: unknown };
     switch (m.type) {
-      case "ready":
+      case "ready": {
+        // An editor closed with unsaved work left its page behind; it comes back
+        // only if the file has not moved on since, which would make it a
+        // conflict nobody asked for.
+        const kept = this.storedDraft(document);
+        if (kept && kept.base === document.getText() && kept.draft !== kept.base) {
+          session.draft = kept.draft;
+          session.rev += 1;
+        }
         await this.postRender(panel, document, "render");
+        this.postSaveState(panel, session);
         await this.postExtraCss(panel, document);
         this.postUiConfig(panel);
         this.postChromeState(panel);
         await this.postSiteChrome(panel, document);
         break;
+      }
       case "setChrome":
         await saveChromeVisibility(m.header, m.nav);
         this.postChromeState(panel);
@@ -226,12 +441,27 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         await this.renderSub(document, panel, Number(m.id), String(m.text ?? ""));
         break;
       case "sync":
-        await this.applySync(document, panel, Number(m.baseVersion), m.edits, own);
+        await this.applySync(document, panel, Number(m.baseVersion), m.edits, session);
+        break;
+      case "save":
+        await this.saveDraft(document, panel, session);
+        break;
+      case "outsideChange":
+        await this.resolveOutsideChange(document, panel, session, String(m.action ?? "keep"));
         break;
       case "insertAt":
-        this.insertPanel.openInsertAt({ uri: document.uri, line: Number(m.line) });
+        // The wizard writes into the file, so the page goes there first —
+        // inserting into a file that is missing the author's latest paragraphs
+        // would come back as a conflict over their own writing.
+        if (await this.saveDraft(document, panel, session)) {
+          this.insertPanel.openInsertAt({ uri: document.uri, line: Number(m.line) });
+        }
         break;
       case "editBlock":
+        // Same as insertAt: the form replaces a range of the file.
+        if (!(await this.saveDraft(document, panel, session))) {
+          break;
+        }
         this.editBlock(
           document,
           panel,
@@ -241,6 +471,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         );
         break;
       case "openAsText":
+        // What the author is about to read should be the page they were just
+        // editing, so the draft is written to the file first.
+        await this.saveDraft(document, panel, session);
         await vscode.commands.executeCommand("vscode.openWith", document.uri, "default");
         break;
       case "openConfig":
@@ -296,55 +529,37 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   /** Applies a batch of targeted edits and answers with a “catch-up” render. */
+  /**
+   * A batch from the webview. It goes into the draft and comes straight back as
+   * a render; the file is not involved until the author saves.
+   */
   private async applySync(
     document: vscode.TextDocument,
     panel: vscode.WebviewPanel,
     baseVersion: number,
     rawEdits: unknown,
-    own: OwnEdits,
+    session: Session,
   ): Promise<void> {
     const edits = parseSyncEdits(rawEdits ?? []);
     if (!edits) {
       getLogger().error("Visual editor: a malformed batch of edits was refused");
     }
-    if (!edits || baseVersion !== document.version) {
-      // The batch was built against stale text — reject it and send a full render.
-      void panel.webview.postMessage({ type: "rejected", version: document.version });
+    if (!edits || baseVersion !== session.rev) {
+      // Built against text that has moved on — refuse it and send the page as
+      // it stands.
+      void panel.webview.postMessage({ type: "rejected", version: session.rev });
       await this.postRender(panel, document, "render");
       return;
     }
     if (edits.length > 0) {
-      const edit = new vscode.WorkspaceEdit();
-      for (const op of planEditOps(lineDoc(document), edits)) {
-        if (op.kind === "insert") {
-          edit.insert(document.uri, position(op.at), op.text);
-        } else if (op.kind === "delete") {
-          edit.delete(document.uri, range(op.start, op.end));
-        } else {
-          edit.replace(document.uri, range(op.start, op.end), op.text);
-        }
-      }
-      // The change event can arrive while this is still awaiting; from here to
-      // the version being recorded, every change to this document is ours.
-      own.applying += 1;
-      let ok: boolean;
-      try {
-        ok = await vscode.workspace.applyEdit(edit);
-      } finally {
-        own.applying -= 1;
-      }
-      if (!ok) {
-        getLogger().warn("Visual editor: applyEdit returned false");
-        void panel.webview.postMessage({ type: "rejected", version: document.version });
-        await this.postRender(panel, document, "render");
-        return;
-      }
-      own.versions.add(document.version);
-      if (own.versions.size > 64) {
-        own.versions.clear();
-      }
+      session.draft = applySyncEdits(session.draft, edits);
+      session.rev += 1;
+      await this.storeDraft(document, { draft: session.draft, base: session.base });
     }
     await this.postRender(panel, document, "synced");
+    // After the render: the webview's status line is written by both, and what
+    // the author needs to see is whether the page is in the file.
+    this.postSaveState(panel, session);
   }
 
   /** The “Form” button on a code block: open the structured form. */
@@ -709,6 +924,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   <button id="tbUndo" title="${t("Undo (Cmd/Ctrl+Z)")}"><span class="codicon codicon-discard"></span></button>
   <button id="tbRedo" title="${esc(t("Redo"))}"><span class="codicon codicon-redo"></span></button>
   <div class="grow"></div>
+  <button id="tbSave" title="${esc(t("Save (Cmd/Ctrl+S)"))}"><span class="codicon codicon-save"></span></button>
   <span id="vstatus">${esc(t("Loading…"))}</span>
   <button id="tbSettings" title="${esc(t("Editor settings"))}"><span class="codicon codicon-settings-gear"></span></button>
   <button id="tbTheme" title="${esc(t("Theme: light / dark"))}"><span class="codicon codicon-color-mode"></span></button>
@@ -717,6 +933,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   <button id="tbSiteNav" title="${t("Site pages on the left (show/hide)")}"><span class="codicon codicon-layout-sidebar-left"></span></button>
   <button id="tbToc" title="${t("Table of contents (show/hide)")}"><span class="codicon codicon-list-tree"></span></button>
   <button id="tbAsText" title="${esc(t("Open as text"))}"><span class="codicon codicon-go-to-file"></span></button>
+</div>
+<div id="voutside" class="v-bar" hidden>
+  <span class="codicon codicon-warning"></span>
+  <span class="v-bar-text">${esc(t("This file was changed outside the editor."))}</span>
+  <button id="vOutsideReload" class="secondary">${esc(t("Load the file"))}</button>
+  <button id="vOutsideKeep" class="secondary">${esc(t("Keep my version"))}</button>
 </div>
 <header id="vhead" class="mv-head"></header>
 <div id="vbody">

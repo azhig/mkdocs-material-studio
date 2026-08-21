@@ -466,5 +466,11 @@
   "“View source” button": "Bouton « voir la source »",
   "…": "…",
   "← Back": "← Retour",
-  "Site settings — mkdocs.yml": "Paramètres du site — mkdocs.yml"
+  "Site settings — mkdocs.yml": "Paramètres du site — mkdocs.yml",
+  "Save (Cmd/Ctrl+S)": "Enregistrer (Cmd/Ctrl+S)",
+  "This file was changed outside the editor.": "Ce fichier a été modifié en dehors de l'éditeur.",
+  "Load the file": "Charger le fichier",
+  "Keep my version": "Conserver ma version",
+  "The page could not be written to the file.": "La page n'a pas pu être écrite dans le fichier.",
+  "Save (Cmd/Ctrl+S) — unsaved changes": "Enregistrer (Cmd/Ctrl+S) — modifications non enregistrées"
 }

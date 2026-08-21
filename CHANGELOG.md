@@ -4,6 +4,30 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.0 — 2026-08-21
+
+### The page is written to the file when you save it
+
+The visual editor used to write every keystroke into the document, a few times a
+second. With auto-save on, each of those writes was a save, and each save ran
+whatever formatters the project has — whose edits came back as somebody else's
+and redrew the page under the caret. Two releases went into keeping the caret
+alive through that; this one removes the cause.
+
+- **Typing changes the page, not the file.** The editor keeps the page you are
+  working on and writes it to the file on `Cmd/Ctrl+S`, or with the new save
+  button on the toolbar. The status line says _Unsaved changes_ until it lands,
+  and the whole edit goes in as a single undo step.
+- **Unsaved work outlives the tab.** Close the editor with something unwritten
+  and it comes back when the page is opened again — unless the file itself has
+  moved on since, which is a decision to make rather than one to make silently.
+- **An edit from outside is adopted when there is nothing to lose** — the page
+  picks it up block by block, with the caret untouched. When there IS unsaved
+  work, nothing is redrawn: a bar offers to load the file or to keep your
+  version, which the next save then writes over it.
+- The component wizard, the block edit form and “Open as text” save the page
+  first: they work on the file, and they should see the page you are looking at.
+
 ## 0.2.2 — 2026-08-21
 
 ### Typing while something else edits the file

@@ -466,5 +466,11 @@
   "“View source” button": "“查看源码”按钮",
   "…": "…",
   "← Back": "← 返回",
-  "Site settings — mkdocs.yml": "站点设置 — mkdocs.yml"
+  "Site settings — mkdocs.yml": "站点设置 — mkdocs.yml",
+  "Save (Cmd/Ctrl+S)": "保存 (Cmd/Ctrl+S)",
+  "This file was changed outside the editor.": "该文件已在编辑器之外被更改。",
+  "Load the file": "加载文件",
+  "Keep my version": "保留我的版本",
+  "The page could not be written to the file.": "无法将页面写入文件。",
+  "Save (Cmd/Ctrl+S) — unsaved changes": "保存 (Cmd/Ctrl+S) — 有未保存的更改"
 }

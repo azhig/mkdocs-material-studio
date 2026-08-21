@@ -466,5 +466,11 @@
   "“View source” button": "Schaltfläche „Quelltext anzeigen“",
   "…": "…",
   "← Back": "← Zurück",
-  "Site settings — mkdocs.yml": "Website-Einstellungen — mkdocs.yml"
+  "Site settings — mkdocs.yml": "Website-Einstellungen — mkdocs.yml",
+  "Save (Cmd/Ctrl+S)": "Speichern (Cmd/Strg+S)",
+  "This file was changed outside the editor.": "Diese Datei wurde außerhalb des Editors geändert.",
+  "Load the file": "Datei laden",
+  "Keep my version": "Meine Fassung behalten",
+  "The page could not be written to the file.": "Die Seite konnte nicht in die Datei geschrieben werden.",
+  "Save (Cmd/Ctrl+S) — unsaved changes": "Speichern (Cmd/Strg+S) — nicht gespeicherte Änderungen"
 }

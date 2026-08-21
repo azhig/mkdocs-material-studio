@@ -276,7 +276,10 @@ describe("telling a user edit from a programmatic one", () => {
     p.textContent = "hello there";
     await settle();
     expect(h.core.dirty.has(p)).toBe(true);
-    expect(h.statusEl.textContent).toBe("Changed…");
+    // The status line says nothing about it: whether the page is in the file is
+    // shown on the save button, and a line that renamed the same state three
+    // times flickered on every keystroke.
+    expect(h.statusEl.textContent).toBe("");
   });
 
   it("a mutation inside mutedRemote is not an edit", async () => {

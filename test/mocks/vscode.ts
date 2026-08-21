@@ -176,6 +176,9 @@ export const TextEditorRevealType = {
 /** A text document that really holds text, so an edit can be checked against it. */
 export class FakeTextDocument {
   version = 1;
+  /** Whether the buffer has been written out since the last edit. */
+  saved = false;
+  private dirty = false;
   private text: string;
 
   constructor(
@@ -191,7 +194,7 @@ export class FakeTextDocument {
   }
 
   get isDirty(): boolean {
-    return false;
+    return this.dirty;
   }
 
   lineAt(line: number): { text: string; lineNumber: number; range: Range } {
@@ -201,7 +204,14 @@ export class FakeTextDocument {
 
   /** Writes the text out, so a test can check the file rather than the buffer. */
   async save(): Promise<boolean> {
-    await fs.writeFile(this.uri.fsPath, this.text, "utf8");
+    // The state changes before the write, not after it: a test waits for the
+    // handler it called, and a disk is slower than that — asserting on `saved`
+    // used to pass locally and fail on CI. The file is still written, because
+    // the tree tests read the mkdocs.yml a save produced; a document at a
+    // made-up path has nowhere to go, and saving it is still a save.
+    this.dirty = false;
+    this.saved = true;
+    await fs.writeFile(this.uri.fsPath, this.text, "utf8").catch(() => undefined);
     return true;
   }
 
@@ -224,6 +234,7 @@ export class FakeTextDocument {
   setText(text: string): void {
     this.text = text;
     this.version += 1;
+    this.dirty = true;
   }
 
   /** Applies a batch the way VS Code does: every offset taken in the text as it is now. */
@@ -239,6 +250,7 @@ export class FakeTextDocument {
       this.text = this.text.slice(0, span.start) + span.text + this.text.slice(span.end);
     }
     this.version += 1;
+    this.dirty = true;
   }
 }
 

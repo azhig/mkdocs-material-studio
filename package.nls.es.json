@@ -1,5 +1,6 @@
 {
   "extension.description": "Obtenga una vista previa de la documentación de MkDocs Material y edítela visualmente dentro de VS Code",
+  "command.saveVisual": "Guardar la página (editor visual)",
   "command.openPreview": "Abrir vista previa",
   "command.openPreviewToSide": "Abrir la vista previa al lado",
   "command.showLogs": "Mostrar registro",

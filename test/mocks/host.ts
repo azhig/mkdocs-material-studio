@@ -91,8 +91,27 @@ export async function settle(rounds = 8): Promise<void> {
 export function fakeContext(extensionPath = "/ext"): {
   extensionUri: vscode.Uri;
   subscriptions: { dispose(): void }[];
+  workspaceState: {
+    get<T>(key: string, fallback: T): T;
+    update(key: string, value: unknown): Promise<void>;
+  };
 } {
-  return { extensionUri: vscode.Uri.file(extensionPath), subscriptions: [] };
+  // The visual editor keeps unsaved pages here between sessions, so the store
+  // has to behave like one rather than be absent.
+  const state = new Map<string, unknown>();
+  return {
+    extensionUri: vscode.Uri.file(extensionPath),
+    subscriptions: [],
+    workspaceState: {
+      get<T>(key: string, fallback: T): T {
+        return (state.get(key) as T | undefined) ?? fallback;
+      },
+      update(key: string, value: unknown): Promise<void> {
+        state.set(key, value);
+        return Promise.resolve();
+      },
+    },
+  };
 }
 
 /** A project service that reports no MkDocs project — the plain-Markdown case. */

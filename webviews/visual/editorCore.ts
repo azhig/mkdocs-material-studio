@@ -16,7 +16,6 @@
 
 import { serializeTopBlock, UnsupportedBlockError } from "./htmlToMd";
 import { hasActivePopup } from "./popups";
-import { t } from "../shared/i18n";
 import {
   deleteEdit as planDeleteEdit,
   dropDuplicateRanges,
@@ -199,7 +198,6 @@ const observer = new MutationObserver((mutations) => {
     return; // only a programmatic re-render of islands — do not synchronize
   }
   if (dirty.size > 0 || removedKnown.length > 0 || hasDraftContent()) {
-    st.set(t("Changed…"));
     scheduleSync();
   }
 });
@@ -224,7 +222,6 @@ const removalObserver = new MutationObserver((mutations) => {
     }
   }
   if (changed) {
-    st.set(t("Changed…"));
     scheduleSync();
   }
 });
@@ -271,7 +268,6 @@ export function markDirty(node: Node): void {
   const block = host.topBlockOf(node);
   if (block) {
     dirty.add(block);
-    st.set(t("Changed…"));
     scheduleSync();
   }
 }
@@ -411,7 +407,6 @@ const pendingSourceEdits: SyncEdit[] = [];
 
 export function queueSourceEdit(edit: SyncEdit): void {
   pendingSourceEdits.push(edit);
-  st.set(t("Changed…"));
   scheduleSync(80);
 }
 
@@ -527,7 +522,6 @@ function buildEdits(): SyncEdit[] {
 /** A batch has left for the extension; the answer is a render or a patch. */
 export function noteSyncSent(): void {
   syncInFlight = true;
-  st.set(t("Syncing…"));
 }
 
 /** The batch was refused (an external edit got there first). */
