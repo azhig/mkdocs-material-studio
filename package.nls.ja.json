@@ -1,5 +1,6 @@
 {
   "extension.description": "MkDocs Material のドキュメントを VS Code 内でプレビューし、ビジュアルに編集します",
+  "command.saveVisual": "ページを保存 (ビジュアルエディター)",
   "command.openPreview": "プレビューを開く",
   "command.openPreviewToSide": "横に並べてプレビューを開く",
   "command.showLogs": "ログを表示",

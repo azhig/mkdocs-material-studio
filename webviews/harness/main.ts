@@ -21,7 +21,9 @@ declare global {
     __buildEngine?: () => { render: (src: string) => string };
     __harness?: {
       load: (text: string) => void;
+      outside: (text: string) => void;
       getText: () => string;
+      getFile: () => string;
       extraCss: (css: string) => void;
     };
   }
@@ -211,13 +213,32 @@ async function loadPage(rel: string): Promise<void> {
       throw new Error(String(res.status));
     }
     text = await res.text();
+    fileText = text; // the page as the "file" has it: a fresh page has no draft
+    unsaved = false;
     activePage = rel;
     version++;
     render("render");
+    toWebview?.({ type: "saveState", unsaved: false });
     toWebview?.({ type: "siteActive", active: activePage });
   } catch (err) {
     log(`could not read ${rel}: ${String(err)}`);
   }
+}
+
+/** The stand's file, and whether the page has anything the file does not. */
+let fileText = "";
+let unsaved = false;
+
+/** An edit to the file made by somebody else — the console calls this. */
+function editFromOutside(next: string): void {
+  fileText = next;
+  if (!unsaved) {
+    text = next;
+    version++;
+    render("synced");
+    return;
+  }
+  toWebview?.({ type: "outsideChange" });
 }
 
 function render(kind: "render" | "synced"): void {
@@ -247,6 +268,7 @@ function handleFromWebview(msg: unknown): void {
   switch (m.type) {
     case "ready":
       render("render");
+      toWebview?.({ type: "saveState", unsaved });
       sendSiteChrome();
       void start();
       break;
@@ -282,7 +304,31 @@ function handleFromWebview(msg: unknown): void {
       }
       const edits = (m.edits ?? []) as SyncEdit[];
       applyEdits(edits);
+      // Like the provider: typing changes the page, not the file. The stand
+      // keeps a "file" of its own so the difference shows here too.
+      unsaved = unsaved || edits.length > 0;
       render("synced");
+      toWebview?.({ type: "saveState", unsaved });
+      break;
+    }
+    case "save": {
+      fileText = text;
+      unsaved = false;
+      log(`save: ${text.length} characters written to the file`);
+      toWebview?.({ type: "saveState", unsaved: false, justSaved: true });
+      break;
+    }
+    case "outsideChange": {
+      if (String(m.action) === "reload") {
+        text = fileText;
+        version++;
+        unsaved = false;
+        toWebview?.({ type: "saveState", unsaved: false });
+        render("render");
+      } else {
+        fileText = text; // keeping the page: the next save writes over the file
+        toWebview?.({ type: "saveState", unsaved: true });
+      }
       break;
     }
     case "setConfig": {
@@ -371,11 +417,21 @@ toWebview = (msg) => window.postMessage(msg, "*");
 window.__harness = {
   load(t: string): void {
     text = t;
+    fileText = t;
+    unsaved = false;
     version++;
     render("render");
   },
+  /** Somebody else edits the file while the page is open. */
+  outside(t: string): void {
+    editFromOutside(t);
+  },
   getText(): string {
     return text;
+  },
+  /** What the stand's "file" holds — the page reaches it only on save. */
+  getFile(): string {
+    return fileText;
   },
   extraCss(css: string): void {
     // A manual check of extra_css loading: we imitate the extension's message.

@@ -2,7 +2,7 @@
   "name": "mkdocs-material-studio",
   "displayName": "MkDocs Material Studio",
   "description": "%extension.description%",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "azhig",
   "license": "MIT",
   "repository": {
@@ -47,7 +47,21 @@
     "onLanguage:markdown"
   ],
   "contributes": {
+    "keybindings": [
+      {
+        "command": "mkdocsStudio.saveVisual",
+        "key": "ctrl+s",
+        "mac": "cmd+s",
+        "when": "activeCustomEditorId == 'mkdocsStudio.visualEditor'"
+      }
+    ],
     "commands": [
+      {
+        "command": "mkdocsStudio.saveVisual",
+        "title": "%command.saveVisual%",
+        "category": "MkDocs",
+        "icon": "$(save)"
+      },
       {
         "command": "mkdocsStudio.openPreview",
         "title": "%command.openPreview%",

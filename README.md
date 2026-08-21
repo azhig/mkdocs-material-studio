@@ -43,6 +43,15 @@ icons and emoji, task lists and definition lists. It updates as you type.
 **MkDocs: Open in Visual Editor** — you type in the rendered page. The regular
 text editor is untouched; the visual one opens only when you ask for it.
 
+**The file is written when you save it, and not before.** What you type stays in
+the editor until `Cmd/Ctrl+S` (or the save button on the toolbar) — the status
+line says _Unsaved changes_ while it does. That is what keeps auto-save and the
+formatters it triggers away from the page: nothing rewrites the file between one
+word and the next, and one save is one undo step. Unsaved work survives closing
+the tab — the page comes back the way you left it. If the file changes underneath
+you while you have unsaved work, a bar offers the choice: load the file, or keep
+your version and write it over the file on the next save.
+
 ![The visual editor: a call-out, content tabs with a highlighted Python block, an annotation, a Mermaid diagram and a table — all editable in place, with the site header and the page list around them](docs/images/visual-editor.png)
 
 - **Formatting toolbar** — paragraph styles and headings, bold, italic,
@@ -184,6 +193,7 @@ All of them live under the **MkDocs** category in the command palette.
 
 | Command                         | What it does                                               |
 | ------------------------------- | ---------------------------------------------------------- |
+| Save Page (Visual Editor)       | Writes the page being edited to the file (Cmd/Ctrl+S)      |
 | Open Preview                    | The preview as a full tab, following the current file      |
 | Open Preview to the Side        | The classic split: text on one side, the page on the other |
 | Open in Visual Editor           | Editing inside the rendered page                           |

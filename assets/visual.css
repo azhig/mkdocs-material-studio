@@ -142,6 +142,45 @@ body {
   padding: 0 6px;
   white-space: nowrap;
 }
+/* Unsaved work is worth seeing without looking for it: the status stops being
+   a faded aside, and the save button gets the accent colour. */
+body.v-unsaved #vt #vstatus {
+  opacity: 1;
+  color: var(--md-accent-fg-color, #526cfe);
+}
+body.v-unsaved #vt #tbSave {
+  color: var(--md-accent-fg-color, #526cfe);
+}
+
+/* The bar that says the file changed under the editor. */
+.v-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  /* The fallbacks are the light ones on purpose: a theme that does define the
+     validation colours brings its own, and one that does not is nearly always
+     a light page, where a dark slab reads as a broken element. */
+  background: var(--vscode-inputValidation-warningBackground, #fff4ce);
+  border-bottom: 1px solid var(--vscode-inputValidation-warningBorder, #d6b656);
+  color: var(--vscode-inputValidation-warningForeground, #3b3b3b);
+}
+.v-bar[hidden] {
+  display: none;
+}
+.v-bar .v-bar-text {
+  flex: 1;
+}
+.v-bar button {
+  font: inherit;
+  padding: 2px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--vscode-button-secondaryForeground, inherit);
+  background: var(--vscode-button-secondaryBackground, transparent);
+  border: 1px solid var(--vscode-widget-border, #8884);
+}
 #vt button .codicon {
   font-size: 16px;
   vertical-align: middle;

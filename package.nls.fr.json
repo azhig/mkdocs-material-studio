@@ -1,5 +1,6 @@
 {
   "extension.description": "Afficher un aperçu de la documentation MkDocs Material et la modifier visuellement directement dans VS Code",
+  "command.saveVisual": "Enregistrer la page (éditeur visuel)",
   "command.openPreview": "Ouvrir l'aperçu",
   "command.openPreviewToSide": "Ouvrir l’aperçu sur le côté",
   "command.showLogs": "Afficher le journal",

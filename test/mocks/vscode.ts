@@ -176,6 +176,9 @@ export const TextEditorRevealType = {
 /** A text document that really holds text, so an edit can be checked against it. */
 export class FakeTextDocument {
   version = 1;
+  /** Whether the buffer has been written out since the last edit. */
+  saved = false;
+  private dirty = false;
   private text: string;
 
   constructor(
@@ -191,7 +194,7 @@ export class FakeTextDocument {
   }
 
   get isDirty(): boolean {
-    return false;
+    return this.dirty;
   }
 
   lineAt(line: number): { text: string; lineNumber: number; range: Range } {
@@ -201,7 +204,11 @@ export class FakeTextDocument {
 
   /** Writes the text out, so a test can check the file rather than the buffer. */
   async save(): Promise<boolean> {
-    await fs.writeFile(this.uri.fsPath, this.text, "utf8");
+    // Written out when the test gave the document a real path; a document made
+    // up for a test has none, and saving it is still a save.
+    await fs.writeFile(this.uri.fsPath, this.text, "utf8").catch(() => undefined);
+    this.dirty = false;
+    this.saved = true;
     return true;
   }
 
@@ -224,6 +231,7 @@ export class FakeTextDocument {
   setText(text: string): void {
     this.text = text;
     this.version += 1;
+    this.dirty = true;
   }
 
   /** Applies a batch the way VS Code does: every offset taken in the text as it is now. */
@@ -239,6 +247,7 @@ export class FakeTextDocument {
       this.text = this.text.slice(0, span.start) + span.text + this.text.slice(span.end);
     }
     this.version += 1;
+    this.dirty = true;
   }
 }
 

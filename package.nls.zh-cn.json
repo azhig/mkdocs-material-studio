@@ -1,5 +1,6 @@
 {
   "extension.description": "直接在 VS Code 中预览并可视化编辑 MkDocs Material 文档",
+  "command.saveVisual": "保存页面（可视化编辑器）",
   "command.openPreview": "打开预览",
   "command.openPreviewToSide": "在侧边打开预览",
   "command.showLogs": "显示日志",

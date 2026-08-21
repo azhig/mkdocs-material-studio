@@ -1,10 +1,12 @@
 // The visual editor's half of the protocol, driven end to end.
 //
-// The editor sends a batch of line edits; the provider turns them into a
-// WorkspaceEdit and the file changes. Nothing between the message and the text
-// was ever checked, and it is the only path in the extension that can lose the
-// author's work. Here the document really holds text, applyEdit really applies,
-// and every assertion is on what the file says afterwards.
+// Typing goes into a draft the provider keeps, and the file is written once —
+// when the author saves. That is the whole point of the arrangement: while the
+// document is untouched, auto-save has nothing to save and the project's
+// formatters have nothing to reformat, so nothing comes back to redraw the page
+// mid-word. It is also the only path in the extension that can lose somebody's
+// work, so here the document really holds text, applyEdit really applies, and
+// the assertions are on what the file says — and on when it says it.
 
 import { beforeEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs/promises";
@@ -29,16 +31,19 @@ const { FakeTextDocument, __recorded, __reset, __setSetting } =
 async function open(
   text: string,
   projects = noProjects(),
+  context = fakeContext(),
+  doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), text),
 ): Promise<{
   doc: InstanceType<typeof FakeTextDocument>;
   panel: FakeWebviewPanel;
   insertPanel: ReturnType<typeof recordingInsertPanel>;
+  context: ReturnType<typeof fakeContext>;
+  provider: VisualEditorProvider;
 }> {
-  const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), text);
   const panel = new FakeWebviewPanel();
   const insertPanel = recordingInsertPanel();
   const provider = new VisualEditorProvider(
-    fakeContext() as never,
+    context as never,
     projects,
     echoRenderer(),
     insertPanel,
@@ -46,16 +51,43 @@ async function open(
   provider.resolveCustomTextEditor(doc as never, panel as never, {} as never);
   await settle();
   panel.clear();
-  return { doc, panel, insertPanel };
+  return { doc, panel, insertPanel, context, provider };
 }
 
-/** Sends a batch against the document's current version. */
+/** The revision the provider last told the webview about. */
+function rev(panel: FakeWebviewPanel): number {
+  const last = panel.last("synced") ?? panel.last("render");
+  return Number(last?.version ?? 0);
+}
+
+/** Sends a batch against the draft as the webview currently knows it. */
 async function sync(
-  doc: InstanceType<typeof FakeTextDocument>,
   panel: FakeWebviewPanel,
   edits: { start: number; end: number; text: string }[],
 ): Promise<void> {
-  await panel.send({ type: "sync", baseVersion: doc.version, edits });
+  await panel.send({ type: "sync", baseVersion: rev(panel), edits });
+}
+
+/** Types into the page and then saves it, the way Cmd+S does. */
+async function syncAndSave(
+  panel: FakeWebviewPanel,
+  edits: { start: number; end: number; text: string }[],
+): Promise<void> {
+  await sync(panel, edits);
+  await panel.send({ type: "save" });
+}
+
+/** An edit to the file made by somebody else. */
+async function editFromOutside(
+  doc: InstanceType<typeof FakeTextDocument>,
+  text: string,
+): Promise<void> {
+  doc.setText(text);
+  (vscode as unknown as typeof import("../mocks/vscode")).__onDidChangeTextDocument.fire({
+    document: doc,
+    contentChanges: [],
+  });
+  await new Promise((resolve) => setTimeout(resolve, 320)); // it is debounced
 }
 
 beforeEach(() => {
@@ -77,21 +109,32 @@ describe("the shell", () => {
     expect(panel.last("render")?.text).toBe("# Title\n");
     expect(panel.last("uiConfig")).toBeDefined();
     expect(panel.last("chromeState")).toBeDefined();
+    expect(panel.last("saveState")?.unsaved).toBe(false);
   });
 });
 
-describe("sync: what reaches the file", () => {
-  it("applies a replacement", async () => {
+describe("typing: the page changes, the file does not", () => {
+  it("keeps a replacement in the draft and leaves the file alone", async () => {
     const { doc, panel } = await open("# Title\n\nBody.\n");
-    await sync(doc, panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
-    expect(doc.getText()).toBe("# Title\n\nChanged.\n");
-    expect(panel.last("synced")).toBeDefined();
+    await sync(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
+    expect(panel.last("synced")?.text).toBe("# Title\n\nChanged.\n");
+    expect(doc.getText()).toBe("# Title\n\nBody.\n"); // untouched until a save
+    expect(doc.version).toBe(1);
+    expect(panel.last("saveState")?.unsaved).toBe(true);
     expect(panel.ofType("rejected")).toHaveLength(0);
   });
 
-  it("applies an insert and a delete in one batch", async () => {
+  it("writes the page to the file on save, and saves it", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await syncAndSave(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
+    expect(doc.getText()).toBe("# Title\n\nChanged.\n");
+    expect(doc.saved).toBe(true);
+    expect(panel.last("saveState")).toMatchObject({ unsaved: false, justSaved: true });
+  });
+
+  it("applies an insert and a delete from one batch", async () => {
     const { doc, panel } = await open("one\n\ntwo\n\nthree\n");
-    await sync(doc, panel, [
+    await syncAndSave(panel, [
       { start: 0, end: 0, text: "zero\n\n" },
       { start: 2, end: 4, text: "" },
     ]);
@@ -100,16 +143,33 @@ describe("sync: what reaches the file", () => {
 
   it("does not grow a file that ends without a newline", async () => {
     const { doc, panel } = await open("# Title\n\nBody.");
-    await sync(doc, panel, [{ start: 2, end: 3, text: "Other.\n" }]);
+    await syncAndSave(panel, [{ start: 2, end: 3, text: "Other.\n" }]);
     expect(doc.getText()).toBe("# Title\n\nOther.");
+  });
+
+  it("writes everything typed since the last save as one edit", async () => {
+    // One save is one undo step, however many words went into it.
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await sync(panel, [{ start: 0, end: 1, text: "# Heading\n" }]);
+    await sync(panel, [{ start: 2, end: 3, text: "Body, rewritten.\n" }]);
+    expect(doc.version).toBe(1);
+    await panel.send({ type: "save" });
+    expect(doc.getText()).toBe("# Heading\n\nBody, rewritten.\n");
+    expect(doc.version).toBe(2);
   });
 
   it("an empty batch changes nothing but still answers", async () => {
     const { doc, panel } = await open("# Title\n");
-    await sync(doc, panel, []);
+    await sync(panel, []);
+    expect(doc.getText()).toBe("# Title\n");
+    expect(panel.last("synced")).toBeDefined();
+  });
+
+  it("saving with nothing to write leaves the file untouched", async () => {
+    const { doc, panel } = await open("# Title\n");
+    await panel.send({ type: "save" });
     expect(doc.getText()).toBe("# Title\n");
     expect(doc.version).toBe(1);
-    expect(panel.last("synced")).toBeDefined();
   });
 });
 
@@ -118,12 +178,12 @@ describe("sync: what is refused", () => {
     const { doc, panel } = await open("# Title\n\nBody.\n");
     await panel.send({
       type: "sync",
-      baseVersion: doc.version - 1,
+      baseVersion: rev(panel) + 7, // a revision this editor never had
       edits: [{ start: 0, end: 3, text: "gone\n" }],
     });
     expect(doc.getText()).toBe("# Title\n\nBody.\n");
-    expect(panel.last("rejected")?.version).toBe(doc.version);
-    // And a full render follows, so the editor can start over from the file.
+    expect(panel.last("rejected")).toBeDefined();
+    // And a full render follows, so the editor can start over from the page.
     expect(panel.last("render")?.text).toBe("# Title\n\nBody.\n");
   });
 
@@ -137,18 +197,20 @@ describe("sync: what is refused", () => {
     ["text that is not a string", [{ start: 0, end: 1, text: null }]],
   ])("refuses a batch with %s", async (_name, edits) => {
     const { doc, panel } = await open("# Title\n\nBody.\n");
-    await panel.send({ type: "sync", baseVersion: doc.version, edits });
+    await panel.send({ type: "sync", baseVersion: rev(panel), edits });
     expect(doc.getText()).toBe("# Title\n\nBody.\n");
     expect(panel.last("rejected")).toBeDefined();
     expect(__recorded.errors.join("\n")).toContain("malformed");
   });
 
-  it("reports a refused applyEdit instead of losing the change quietly", async () => {
+  it("keeps the page when the file refuses the write", async () => {
+    // The draft is the only copy of that paragraph — a save that did not land
+    // must not be reported as one, or the next thing to touch the file wins.
     const { doc, panel } = await open("# Title\n\nBody.\n");
     __recorded.refuseEdits = true;
-    await sync(doc, panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
+    await syncAndSave(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
     expect(doc.getText()).toBe("# Title\n\nBody.\n");
-    expect(panel.last("rejected")).toBeDefined();
+    expect(panel.last("saveState")?.unsaved).toBe(true);
     expect(__recorded.warnings.join("\n")).toContain("applyEdit");
   });
 
@@ -161,38 +223,121 @@ describe("sync: what is refused", () => {
   });
 });
 
-describe("sync: the editor's own edits do not bounce back", () => {
-  it("a version we produced does not trigger a full render", async () => {
-    const { doc, panel } = await open("# Title\n\nBody.\n");
-    await sync(doc, panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
-    expect(panel.ofType("synced")).toHaveLength(1);
-    // The full render is debounced: asserting straight away would pass whether
-    // the version was recognised as ours or not. A "render" arriving here would
-    // throw the caret back to the top of the document on every keystroke.
-    await new Promise((resolve) => setTimeout(resolve, 320));
-    expect(panel.ofType("render")).toHaveLength(0);
+describe("unsaved work outliving the tab", () => {
+  it("comes back when the page is opened again", async () => {
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    const first = await open("", noProjects(), context, doc);
+    await sync(first.panel, [{ start: 2, end: 3, text: "Half a thought.\n" }]);
+    first.panel.dispose();
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    expect(again.panel.last("render")?.text).toBe("# Title\n\nHalf a thought.\n");
+    expect(again.panel.last("saveState")?.unsaved).toBe(true);
   });
 
-  it("and does not when the change is reported after applyEdit has returned", async () => {
-    // The other order VS Code is allowed to use. Here the counter is already
-    // back to zero and the version has to carry it.
-    __recorded.changeEvent = "after";
-    const { doc, panel } = await open("# Title\n\nBody.\n");
-    await sync(doc, panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
-    await new Promise((resolve) => setTimeout(resolve, 320));
-    expect(doc.getText()).toBe("# Title\n\nChanged.\n");
-    expect(panel.ofType("render")).toHaveLength(0);
+  it("is not offered back over a file that has moved on since", async () => {
+    // The draft was written against text that no longer exists; restoring it
+    // would quietly revert whatever happened to the file in the meantime.
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    const first = await open("", noProjects(), context, doc);
+    await sync(first.panel, [{ start: 2, end: 3, text: "Mine.\n" }]);
+    first.panel.dispose();
+    doc.setText("# Title\n\nRewritten elsewhere.\n");
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    expect(again.panel.last("render")?.text).toBe("# Title\n\nRewritten elsewhere.\n");
+    expect(again.panel.last("saveState")?.unsaved).toBe(false);
   });
 
-  it("an edit from outside does trigger a full render", async () => {
+  it("is forgotten once it has been saved", async () => {
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    const first = await open("", noProjects(), context, doc);
+    await syncAndSave(first.panel, [{ start: 2, end: 3, text: "Finished.\n" }]);
+    first.panel.dispose();
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    expect(again.panel.last("saveState")?.unsaved).toBe(false);
+    expect(again.panel.last("render")?.text).toBe("# Title\n\nFinished.\n");
+  });
+
+  it("does not come back to undo a checkout of the page it was written on", async () => {
+    // Saved, then the file was taken back to what it said before — `git
+    // checkout`, an undo in the text tab. A draft still sitting in the store
+    // would match that text again and quietly reapply writing the author had
+    // already decided against.
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    const first = await open("", noProjects(), context, doc);
+    await syncAndSave(first.panel, [{ start: 2, end: 3, text: "Finished.\n" }]);
+    first.panel.dispose();
+    doc.setText("# Title\n\nBody.\n");
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    expect(again.panel.last("render")?.text).toBe("# Title\n\nBody.\n");
+    expect(again.panel.last("saveState")?.unsaved).toBe(false);
+  });
+});
+
+describe("an edit from outside", () => {
+  it("is adopted quietly when the editor has nothing unsaved", async () => {
     const { doc, panel } = await open("# Title\n\nBody.\n");
-    doc.setText("# Title\n\nEdited elsewhere.\n");
-    (vscode as unknown as typeof import("../mocks/vscode")).__onDidChangeTextDocument.fire({
-      document: doc,
-      contentChanges: [],
-    });
-    await new Promise((resolve) => setTimeout(resolve, 320)); // the render is debounced
-    expect(panel.last("render")?.text).toBe("# Title\n\nEdited elsewhere.\n");
+    await editFromOutside(doc, "# Title\n\nEdited elsewhere.\n");
+    expect(panel.last("synced")?.text).toBe("# Title\n\nEdited elsewhere.\n");
+    expect(panel.ofType("outsideChange")).toHaveLength(0);
+  });
+
+  it("is put to the author when it would overwrite their unsaved page", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await sync(panel, [{ start: 2, end: 3, text: "Mine, not saved yet.\n" }]);
+    await editFromOutside(doc, "# Title\n\nSomebody else's.\n");
+    expect(panel.last("outsideChange")).toBeDefined();
+    // Nothing was redrawn and nothing was lost: the page still says what the
+    // author typed, and the file still says what the other editor wrote.
+    expect(panel.last("synced")?.text).toBe("# Title\n\nMine, not saved yet.\n");
+    expect(doc.getText()).toBe("# Title\n\nSomebody else's.\n");
+  });
+
+  it("“load the file” throws the draft away and redraws from the file", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await sync(panel, [{ start: 2, end: 3, text: "Mine.\n" }]);
+    await editFromOutside(doc, "# Title\n\nTheirs.\n");
+    await panel.send({ type: "outsideChange", action: "reload" });
+    expect(panel.last("render")?.text).toBe("# Title\n\nTheirs.\n");
+    expect(panel.last("saveState")?.unsaved).toBe(false);
+  });
+
+  it("“keep my version” writes the author's page over it on the next save", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await sync(panel, [{ start: 2, end: 3, text: "Mine.\n" }]);
+    await editFromOutside(doc, "# Title\n\nTheirs.\n");
+    await panel.send({ type: "outsideChange", action: "keep" });
+    await panel.send({ type: "save" });
+    expect(doc.getText()).toBe("# Title\n\nMine.\n");
+  });
+
+  it("our own save does not come back as somebody else's edit", async () => {
+    const { panel } = await open("# Title\n\nBody.\n");
+    await syncAndSave(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
+    await new Promise((resolve) => setTimeout(resolve, 320)); // the bar is debounced
+    expect(panel.ofType("outsideChange")).toHaveLength(0);
+    expect(panel.last("saveState")?.unsaved).toBe(false);
+  });
+
+  it("a formatter that rewrites the file on save is adopted, not fought over", async () => {
+    // Trailing whitespace trimmed on save, markdownlint, Prettier: the write
+    // the author asked for is the moment to take whatever came back with it.
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await syncAndSave(panel, [{ start: 2, end: 3, text: "Changed.   \n" }]);
+    await editFromOutside(doc, "# Title\n\nChanged.\n");
+    expect(panel.ofType("outsideChange")).toHaveLength(0);
+    expect(panel.last("synced")?.text).toBe("# Title\n\nChanged.\n");
   });
 });
 
