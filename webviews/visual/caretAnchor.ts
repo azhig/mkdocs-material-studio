@@ -177,6 +177,12 @@ function anchoredBlock(docEl: HTMLElement, anchor: CaretAnchor): HTMLElement | n
   if (byIndex && blockText(byIndex) === anchor.text) {
     return byIndex; // nothing moved — the usual case
   }
+  if (anchor.text.trim() === "") {
+    // An empty line is evidence of nothing: every blank paragraph in the
+    // document reads the same, and the nearest of them is as likely to be the
+    // draft at the end of a card as the line the author was in.
+    return byIndex ?? null;
+  }
   let nearest: { block: HTMLElement; distance: number } | undefined;
   children.forEach((block, at) => {
     const distance = Math.abs(at - anchor.index);

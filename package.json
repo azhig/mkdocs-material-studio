@@ -2,7 +2,7 @@
   "name": "mkdocs-material-studio",
   "displayName": "MkDocs Material Studio",
   "description": "%extension.description%",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "azhig",
   "license": "MIT",
   "repository": {

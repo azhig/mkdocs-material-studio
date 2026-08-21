@@ -4,6 +4,22 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.2 — 2026-08-21
+
+### Typing while something else edits the file
+
+- **An edit from outside no longer redraws the page.** 0.2.1 kept the caret
+  through that redraw, but the redraw itself was the problem: the markup that
+  arrives is the file as it stands on disk, so the words typed a moment ago —
+  still on their way there — were wiped, and the caret was placed into text that
+  no longer matched what the author had in front of them. The page is now
+  patched block by block: the block the caret is in keeps its DOM, its text and
+  its caret, and the rest of the page picks up the change.
+- The caret is anchored only across a redraw caused from outside. When the
+  editor asks for one itself — a Return opening a paragraph, a block being
+  inserted — the caret belongs where that edit put it, and an anchor from before
+  the edit dragged it back to the line it had left.
+
 ## 0.2.1 — 2026-08-21
 
 ### The caret while typing
