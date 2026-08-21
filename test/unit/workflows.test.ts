@@ -24,7 +24,7 @@ interface Job {
   steps?: Step[];
 }
 interface Workflow {
-  on?: unknown;
+  on?: { push?: { branches?: unknown; tags?: unknown } };
   jobs?: Record<string, Job>;
 }
 
@@ -73,6 +73,15 @@ describe("the workflows are the ones GitHub will accept", () => {
         .map((cond) => `${file}: if: ${cond}`),
     );
     expect(offenders, `Use env instead:\n${offenders.map((o) => `  ${o}`).join("\n")}`).toEqual([]);
+  });
+
+  it("releases from main, so a version that lands there is published", () => {
+    // The release used to wait for a tag nobody pushed: the repository had no
+    // releases and no .vsix to download. Bumping the version and merging is the
+    // whole ceremony now — the tag is cut by the workflow.
+    const release = workflows().find((w) => w.file === "release.yml")?.doc;
+    expect(release?.on?.push?.branches).toEqual(["main"]);
+    expect(release?.on?.push?.tags).toEqual(["v*"]); // a tag cut by hand still works
   });
 
   it("pins every action to a major version", () => {

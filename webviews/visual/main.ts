@@ -106,6 +106,7 @@ import {
   initBlockHandle,
   repositionHandle,
 } from "./blockHandle";
+import { restoreCaretAnchor, takeCaretAnchor } from "./caretAnchor";
 import { initIconPicker, openIconPicker } from "./iconPicker";
 import { initMathDialog, openMathDialog } from "./mathDialog";
 import { initMermaidDialog, openMermaidDialog, withDiagramLanguage } from "./mermaidDialog";
@@ -118,6 +119,7 @@ import {
   dirty,
   docLines,
   finishRemote,
+  fullText,
   initCore,
   inlineIslands,
   isFootnoteService,
@@ -307,7 +309,7 @@ window.addEventListener("message", (e: MessageEvent) => {
       if (!inSubEditor()) {
         applyBackground(String(msg.background ?? "material"));
         applyPalette(msg.palette as PaletteMsg | undefined);
-        applyRender(String(msg.html), String(msg.text), Number(msg.version));
+        applyExternalRender(String(msg.html), String(msg.text), Number(msg.version));
       }
       break;
     case "synced":
@@ -467,13 +469,37 @@ function toggleSiteChrome(what: "header" | "nav"): void {
   api.postMessage({ type: "setChrome", [what]: !shown });
 }
 
-/** Full render: resets the DOM (the cursor is lost — external changes only). */
+/** The markup the last render put on screen — see applyExternalRender. */
+let renderedHtml = "";
+
+/**
+ * A render that comes from a change we did not make: someone edited the file,
+ * or saved it and a formatter ran over it. The document is redrawn from the
+ * file, so anything typed and not yet sent is gone — which is why an echo must
+ * not get this far. The same text with the same markup is exactly what is on
+ * screen already: only the version has moved on.
+ */
+function applyExternalRender(html: string, text: string, ver: number): void {
+  if (docEl.childElementCount > 0 && text === fullText() && html === renderedHtml) {
+    adoptText(text, ver);
+    return;
+  }
+  applyRender(html, text, ver);
+}
+
+/** Full render: resets the DOM — the caret is put back from its anchor. */
 function applyRender(html: string, text: string, ver: number): void {
   const tabs = openTabs(docEl);
+  // Taken before the blocks are replaced: the nodes the selection points at are
+  // about to be detached, and the browser answers that by dropping the caret to
+  // the start of the editor — the page jumps to the top and the typing that
+  // follows lands in the first paragraph of the file.
+  const caret = takeCaretAnchor(docEl);
   mutedRemote(() => {
     clearForRender();
     adoptText(text, ver);
     docEl.innerHTML = html;
+    renderedHtml = html;
     decorateAll();
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
@@ -481,6 +507,9 @@ function applyRender(html: string, text: string, ver: number): void {
   void renderDiagrams(docEl);
   refreshToc();
   decorateAnnotations();
+  // Before finishRemote: an action waiting for the sync (an insertion placing
+  // the cursor in the new block) has the last word on where the caret goes.
+  restoreCaretAnchor(docEl, caret);
   repositionHandle(); // blocks were recreated — the handle either moves or disappears
   st.set(t("Ready"));
   finishRemote();
@@ -499,6 +528,7 @@ function applyPatches(html: string, text: string, ver: number): void {
     return;
   }
   adoptText(text, ver);
+  renderedHtml = html;
 
   const tpl = document.createElement("template");
   tpl.innerHTML = html;

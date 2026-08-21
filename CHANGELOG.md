@@ -4,6 +4,20 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.1 — 2026-08-21
+
+### The caret while typing
+
+- **The caret no longer jumps to the top of the page.** An edit the extension did
+  not make — a file saved by a formatter, a change from another editor, or the
+  document coming back unchanged — redrew every block of the page, and the browser
+  answered that by leaving the selection at the start of the editor: the view
+  jumped to the beginning and the next word was typed into the first paragraph of
+  the file. The caret is now anchored to its line before the redraw and put back
+  after it, with the page scrolled so that the line stays where the eye left it.
+- A document that comes back identical is no longer redrawn at all — the page,
+  the caret and anything typed but not yet written stay as they are.
+
 ## 0.2.0 — 2026-08-14
 
 ### Monorepo projects

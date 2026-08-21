@@ -1,17 +1,25 @@
 name: Release
 
-# Triggered by a version tag: `git tag v0.1.0 && git push origin v0.1.0`.
-# The job builds the package, attaches it to a GitHub release, and publishes to
-# the Marketplace only if the VSCE_PAT secret is present — so the workflow is
-# useful even before you have a publisher account.
+# A release is the version in package.json arriving on main: the job builds the
+# package, tags the commit and attaches the .vsix to a GitHub release. Nothing
+# is done by hand — bump the version, merge, and the release appears.
+#
+# A push to main that does not change the version is not a release: the tag is
+# already there, and the job stops before it builds anything. A tag pushed by
+# hand still works, for a release cut from somewhere other than main.
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -25,35 +33,58 @@ jobs:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags are what says whether this version is already out
+
+      - name: Decide whether this is a release
+        id: plan
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          tag="v$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            # A tag pushed by hand must name the version it carries, or the
+            # release would hold a package that says something else.
+            if [ "$GITHUB_REF_NAME" != "$tag" ]; then
+              echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+              exit 1
+            fi
+            echo "release=yes" >> "$GITHUB_OUTPUT"
+          elif git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "release=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::$tag is already released — nothing to do."
+          else
+            echo "release=yes" >> "$GITHUB_OUTPUT"
+            echo "::notice::Releasing $tag."
+          fi
 
       - uses: actions/setup-node@v7
+        if: steps.plan.outputs.release == 'yes'
         with:
           node-version: "24"
           cache: npm
 
       - run: npm ci
+        if: steps.plan.outputs.release == 'yes'
 
       - name: Verify
+        if: steps.plan.outputs.release == 'yes'
         run: npm run check
 
-      - name: Check that the tag matches the version in package.json
-        run: |
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$pkg" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match package.json version $pkg" >&2
-            exit 1
-          fi
-
       - name: Package
+        if: steps.plan.outputs.release == 'yes'
         run: npm run vsix
 
       - name: GitHub release
+        if: steps.plan.outputs.release == 'yes'
         uses: softprops/action-gh-release@v2
         with:
+          # On a push to main the tag does not exist yet — the action creates it
+          # on this commit; on a tag push it is the tag that started the run.
+          tag_name: ${{ steps.plan.outputs.tag }}
           files: "*.vsix"
           generate_release_notes: true
 
       - name: Publish to the Marketplace
-        if: env.VSCE_PAT != ''
+        if: steps.plan.outputs.release == 'yes' && env.VSCE_PAT != ''
         run: npx vsce publish --no-dependencies --packagePath *.vsix
