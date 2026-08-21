@@ -45,17 +45,24 @@ publication it renders as “not found”. That resolves itself with the first
    npm version minor --no-git-tag-version   # 0.1.0 → 0.2.0
    ```
 
-4. Commit and push the tag — the rest is done by `.github/workflows/release.yml`:
+4. Get the new version onto `main` — through a pull request, or straight from
+   here if you work on `main`:
 
    ```bash
    git commit -am "Release 0.2.0"
-   git tag v0.2.0
-   git push && git push --tags
+   git push
    ```
 
-   The workflow verifies that the tag matches the version in `package.json`,
-   runs the checks, builds the `.vsix`, creates a GitHub release with it, and —
-   if the `VSCE_PAT` secret exists — publishes to the Marketplace.
+   The rest is `.github/workflows/release.yml`. A push to `main` whose
+   `package.json` carries a version that has no tag yet **is** the release: the
+   workflow runs the checks, builds the `.vsix`, tags the commit `v0.2.0`,
+   creates a GitHub release with the package attached, and — if the `VSCE_PAT`
+   secret exists — publishes to the Marketplace. A push that does not change the
+   version stops at the first step, since the tag is already there.
+
+   A tag pushed by hand (`git tag v0.2.0 && git push --tags`) still releases,
+   for a version cut from somewhere other than `main`; the workflow refuses a
+   tag that disagrees with `package.json`.
 
 ## Publishing by hand
 
@@ -117,8 +124,8 @@ excluded by `.vscodeignore`. Shipping them would be dead weight, not a fallback.
 
 The rewrite points at the default branch, so a picture appears on the page only
 after it is pushed. A new screenshot in a release commit is visible once that
-commit is on `main` — which the release workflow guarantees, since it is
-triggered by a tag on it.
+commit is on `main` — which the release workflow guarantees, since that is what
+triggers it.
 
 ## What to check before publishing
 
