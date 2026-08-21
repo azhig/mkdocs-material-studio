@@ -256,6 +256,7 @@ initCore({
   caretInBlock: () => currentBlock() !== null,
   inSub: () => inSubEditor(),
   renderSub: () => requestSubRender(),
+  traceEdits: (edits) => traceEdits(edits),
 });
 
 // ---------------------------------------------------------------------------
@@ -305,6 +306,7 @@ window.addEventListener("message", (e: MessageEvent) => {
   const msg = e.data as { type: string; [k: string]: unknown };
   switch (msg.type) {
     case "render":
+      tracing = Boolean(msg.diagnostics) || tracing;
       // While an annotation editor is open, #doc holds the note, not the file —
       // a file render would wipe it. The close path requests a fresh one anyway.
       if (!inSubEditor()) {
@@ -314,6 +316,7 @@ window.addEventListener("message", (e: MessageEvent) => {
       }
       break;
     case "synced":
+      tracing = Boolean(msg.diagnostics) || tracing;
       if (!inSubEditor()) {
         applyPatches(String(msg.html), String(msg.text), Number(msg.version));
       }
@@ -321,11 +324,17 @@ window.addEventListener("message", (e: MessageEvent) => {
     case "subRendered":
       onSubRendered(Number(msg.id), String(msg.html));
       break;
+    case "diagnostics":
+      tracing = Boolean(msg.on);
+      break;
     case "saveState":
       showSaveState(Boolean(msg.unsaved), Boolean(msg.justSaved));
       break;
     case "outsideChange":
       showOutsideBar(true);
+      break;
+    case "draftAvailable":
+      showDraftBar(true);
       break;
     case "rejected":
       // The batch is stale (an external edit): a full render will arrive separately.
@@ -454,6 +463,14 @@ const chromeHooks: SiteChromeHooks = {
  * this happens — that is what keeps the project's formatters from running (and
  * rewriting the file under the caret) between one word and the next.
  */
+function traceEdits(edits: { start: number; end: number; text: string }[]): void {
+  dlog(
+    `sending ${edits.length} edits [${edits
+      .map((e) => `${e.start},${e.end}:${e.text.length}`)
+      .join(" ")}], caret ${caretSpot()}`,
+  );
+}
+
 function saveNow(): void {
   // Anything still waiting in the batch timer goes first, so what is saved is
   // what is on screen and not what it was a moment ago.
@@ -489,6 +506,18 @@ function refreshStatus(): void {
 function showSaveState(unsaved: boolean, _justSaved: boolean): void {
   unsavedWork = unsaved;
   refreshStatus();
+}
+
+/**
+ * The bar offering work left behind by a closed editor. The page itself opens
+ * on the file: closing without saving is an answer, and a page that quietly
+ * disagreed with the file on disk would sooner or later be committed that way.
+ */
+function showDraftBar(show: boolean): void {
+  const bar = document.getElementById("vdraft");
+  if (bar) {
+    bar.hidden = !show;
+  }
 }
 
 /** The bar that appears when the file was changed by someone else. */
@@ -529,6 +558,51 @@ function toggleSiteChrome(what: "header" | "nav"): void {
 /** The markup the last render put on screen — see applyExternalRender. */
 let renderedHtml = "";
 
+// ---------------------------------------------------------------------------
+// The diagnostic trace (mkdocsStudio.diagnostics)
+// ---------------------------------------------------------------------------
+//
+// Sent to the extension so both halves of the story read in order in one log.
+// Structure only — counts, tags, block positions — never a line of the author's
+// document: this log is something a person pastes into an issue.
+
+let tracing = false;
+
+function dlog(what: string): void {
+  if (tracing) {
+    api.postMessage({ type: "log", text: what });
+  }
+}
+
+/** Where the caret is, in terms a log can carry. */
+function caretSpot(): string {
+  const sel = document.getSelection();
+  if (!sel || sel.rangeCount === 0) {
+    return "none";
+  }
+  const node = sel.anchorNode;
+  if (!node || !docEl.contains(node)) {
+    return "outside the document";
+  }
+  const block = topBlockOf(node) as HTMLElement | null;
+  if (!block) {
+    return "in #doc, not in a block";
+  }
+  const index = Array.prototype.indexOf.call(docEl.children, block);
+  return `block ${index} <${block.tagName.toLowerCase()}${
+    block.className ? "." + block.className.split(" ")[0] : ""
+  } line=${block.getAttribute("data-src-line") ?? "-"}> +${sel.anchorOffset}`;
+}
+
+/** What the document looks like, block by block, without its text. */
+function docShape(): string {
+  const kids = Array.from(docEl.children);
+  const withLine = kids.filter((el) => el.hasAttribute("data-src-line")).length;
+  const pending = kids.filter((el) => el.hasAttribute("data-pending")).length;
+  const service = kids.filter((el) => el.classList.contains("vservice")).length;
+  return `${kids.length} children (${withLine} with a source line, ${pending} pending, ${service} service)`;
+}
+
 /**
  * A render that comes from a change we did not make: someone edited the file,
  * or saved it and a formatter ran over it. The document is redrawn from the
@@ -538,9 +612,11 @@ let renderedHtml = "";
  */
 function applyExternalRender(html: string, text: string, ver: number): void {
   if (docEl.childElementCount > 0 && text === fullText() && html === renderedHtml) {
+    dlog(`render from outside: identical to what is on screen, ignored (v${ver})`);
     adoptText(text, ver);
     return;
   }
+  dlog(`render from outside: v${ver}, ${docShape()}, caret ${caretSpot()}`);
   // Patch it in block by block. Redrawing the whole document for someone else's
   // edit is what put the caret at the top of the page — and it also threw away
   // whatever had been typed into the caret's block but not yet sent, since the
@@ -557,6 +633,7 @@ function applyExternalRender(html: string, text: string, ver: number): void {
 
 /** Full render: resets the DOM. `caret` is where it stood, for an outside edit. */
 function applyRender(html: string, text: string, ver: number, caret: CaretAnchor | null): void {
+  dlog(`FULL RENDER v${ver}: ${docShape()}, caret ${caretSpot()}, anchor=${caret ? "yes" : "no"}`);
   const tabs = openTabs(docEl);
   mutedRemote(() => {
     clearForRender();
@@ -572,7 +649,10 @@ function applyRender(html: string, text: string, ver: number, caret: CaretAnchor
   decorateAnnotations();
   // Before finishRemote: an action waiting for the sync (an insertion placing
   // the cursor in the new block) has the last word on where the caret goes.
-  restoreCaretAnchor(docEl, caret);
+  const putBack = restoreCaretAnchor(docEl, caret);
+  dlog(
+    `full render done: ${docShape()}, caret ${caretSpot()}${putBack ? " (from the anchor)" : ""}`,
+  );
   repositionHandle(); // blocks were recreated — the handle either moves or disappears
   refreshStatus();
   finishRemote();
@@ -603,17 +683,30 @@ function applyPatches(
 
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
-  // The engine's own tail — the separator and the list of footnote texts — is
-  // not part of the document: it has no source line, and blocksInOrder leaves
-  // it out. Counting it in `fresh` made the two lists disagree on every page
-  // that has a footnote, so every edit fell through to a full render and the
-  // caret was thrown to the top of the page each time a word was typed.
+  // A block the engine drew by itself — the footnote tail, and whatever a
+  // project's own extensions add — has no source line, and blocksInOrder leaves
+  // it out. Counting such blocks here made the two lists disagree for the life
+  // of the document: every edit failed the count, fell through to a full render
+  // and threw the caret to the top of the page. So the rule is the same on both
+  // sides: what has a source line is the document, and the rest is the engine's.
   const freshAll = Array.from(tpl.content.children);
-  const fresh = freshAll.filter((el) => !isFootnoteService(el));
-  const service = freshAll.filter(isFootnoteService);
+  const fresh = freshAll.filter((el) => el.hasAttribute("data-src-line"));
+  const service = freshAll.filter((el) => !el.hasAttribute("data-src-line"));
   const ours = blocksInOrder();
+  dlog(
+    `patch v${ver}: render has ${fresh.length} document blocks + ${service.length} service, ` +
+      `page has ${ours.length}; ${docShape()}; caret ${caretSpot()}`,
+  );
 
   if (fresh.length !== ours.length) {
+    dlog(
+      "patch gives up — the two disagree on how many blocks there are; " +
+        `render: [${freshAll
+          .map((el) => `${el.tagName.toLowerCase()}${el.hasAttribute("data-src-line") ? "" : "!"}`)
+          .join(" ")}]; page: [${Array.from(docEl.children)
+          .map((el) => `${el.tagName.toLowerCase()}${el.hasAttribute("data-src-line") ? "" : "!"}`)
+          .join(" ")}]`,
+    );
     // The structure diverged (for example, a paste with empty lines) — the safe
     // path is a full render.
     applyRender(html, text, ver, caret);
@@ -663,11 +756,12 @@ function applyPatches(
         caretAfterIsland(neu, refresh.index);
       }
     }
-    replaceFootnoteService(service);
+    replaceServiceBlocks(service);
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
     decorateCodeNavs();
   });
+  dlog(`patch done: ${docShape()}, caret ${caretSpot()}`);
   if (range0 && caretHome && caretHome.isConnected) {
     const sel = document.getSelection();
     const lost = !sel || sel.rangeCount === 0 || !caretHome.contains(sel.anchorNode);
@@ -719,19 +813,24 @@ function copySrcAttrs(from: Element, to: Element): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Puts the freshly rendered footnote tail in place of the old one. It is drawn
- * by the engine from the definitions in the file, so it is replaced whole
- * rather than patched — nothing in it is edited directly, and the caret is
- * never in it.
+ * Puts the freshly rendered service blocks in place of the old ones. They are
+ * drawn by the engine rather than written in the file, so they are replaced
+ * whole rather than patched — nothing in them is edited directly, and the caret
+ * is never in one.
  */
-function replaceFootnoteService(service: Element[]): void {
+function replaceServiceBlocks(service: Element[]): void {
   for (const el of Array.from(docEl.children)) {
-    if (isFootnoteService(el)) {
+    if (el.classList.contains("vservice")) {
       el.remove();
     }
   }
   for (const el of service) {
     docEl.appendChild(el);
+    // The mark is what makes them findable next time: `decorateBlock` adds it
+    // to the footnote tail by name, and anything else the engine draws gets it
+    // here, so the same rule covers a project with extensions of its own.
+    el.classList.add("vservice", "visland", "vnoedit");
+    el.setAttribute("contenteditable", "false");
     decorateBlock(el as HTMLElement);
   }
 }
@@ -1601,6 +1700,14 @@ function wireToolbar(): void {
   on("tbToc", () => toggleToc());
   on("tbAsText", () => api.postMessage({ type: "openAsText" }));
   on("tbSave", () => saveNow());
+  document.getElementById("vDraftRestore")?.addEventListener("click", () => {
+    showDraftBar(false);
+    api.postMessage({ type: "draft", action: "restore" });
+  });
+  document.getElementById("vDraftDiscard")?.addEventListener("click", () => {
+    showDraftBar(false);
+    api.postMessage({ type: "draft", action: "discard" });
+  });
   document.getElementById("vOutsideReload")?.addEventListener("click", () => {
     showOutsideBar(false);
     api.postMessage({ type: "outsideChange", action: "reload" });

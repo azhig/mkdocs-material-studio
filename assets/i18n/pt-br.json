@@ -472,5 +472,8 @@
   "Load the file": "Carregar o arquivo",
   "Keep my version": "Manter a minha versão",
   "The page could not be written to the file.": "Não foi possível gravar a página no arquivo.",
-  "Save (Cmd/Ctrl+S) — unsaved changes": "Salvar (Cmd/Ctrl+S) — alterações não salvas"
+  "Save (Cmd/Ctrl+S) — unsaved changes": "Salvar (Cmd/Ctrl+S) — alterações não salvas",
+  "This page was left with changes that were never saved.": "Esta página ficou com alterações que nunca foram salvas.",
+  "Bring them back": "Recuperar",
+  "Discard them": "Descartar"
 }

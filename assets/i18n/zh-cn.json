@@ -472,5 +472,8 @@
   "Load the file": "加载文件",
   "Keep my version": "保留我的版本",
   "The page could not be written to the file.": "无法将页面写入文件。",
-  "Save (Cmd/Ctrl+S) — unsaved changes": "保存 (Cmd/Ctrl+S) — 有未保存的更改"
+  "Save (Cmd/Ctrl+S) — unsaved changes": "保存 (Cmd/Ctrl+S) — 有未保存的更改",
+  "This page was left with changes that were never saved.": "此页面留有从未保存的更改。",
+  "Bring them back": "恢复它们",
+  "Discard them": "放弃它们"
 }

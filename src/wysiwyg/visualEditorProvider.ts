@@ -68,12 +68,57 @@ interface Session {
   own: OwnEdits;
 }
 
+/**
+ * When edits reach the document.
+ *
+ * `live` is what a text editor does and what this editor did before 0.3.0: the
+ * buffer follows the page as it is typed, so the preview, the text tab and
+ * VS Code's own save and undo all work on it directly.
+ *
+ * `onSave` holds the page back until the author saves. It exists for projects
+ * whose formatters run on auto-save: with `live`, every pause in typing is a
+ * save, and a formatter that rewrites the file mid-sentence rewrites the page
+ * under the author's hands.
+ */
+function writeMode(scope: vscode.Uri): "live" | "onSave" {
+  return vscode.workspace.getConfiguration("mkdocsStudio", scope).get<string>("writeToDocument") ===
+    "onSave"
+    ? "onSave"
+    : "live";
+}
+
+/**
+ * The diagnostic trace (mkdocsStudio.diagnostics).
+ *
+ * Structure only — how many blocks, which ranges, which decisions — and never a
+ * line of anybody's document: the log is something a person pastes into an
+ * issue. Off by default, and meant to be turned on while a problem is chased
+ * rather than left running.
+ */
+function tracing(): boolean {
+  return vscode.workspace.getConfiguration("mkdocsStudio").get<boolean>("diagnostics", false);
+}
+
+function trace(what: string): void {
+  if (tracing()) {
+    getLogger().info(`[visual] ${what}`);
+  }
+}
+
+/** The shape of a render, for the trace: how much of it carries a source line. */
+function blockShape(html: string): string {
+  const withLine = (html.match(/data-src-line/g) ?? []).length;
+  return `${html.length} characters, ${withLine} blocks with a source line`;
+}
+
 /** Where an unsaved page waits while its editor is closed. */
 const DRAFT_STORE = "mkdocsStudio.drafts";
 
 interface StoredDraft {
   draft: string;
   base: string;
+  /** When it was left behind, so the offer to take it back can say so. */
+  at: number;
 }
 
 /**
@@ -137,6 +182,16 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       own: { versions: new Set<number>(), applying: 0 },
     };
     this.sessions.set(panel, session);
+    const files = vscode.workspace.getConfiguration("files", document.uri);
+    trace(
+      `open ${path.basename(document.uri.fsPath)}: ${document.getText().length} characters, ` +
+        `mode=${writeMode(document.uri)}, autoSave=${String(files.get("autoSave"))}, ` +
+        `trimTrailingWhitespace=${String(files.get("trimTrailingWhitespace"))}, ` +
+        `insertFinalNewline=${String(files.get("insertFinalNewline"))}, ` +
+        `formatOnSave=${String(
+          vscode.workspace.getConfiguration("editor", document.uri).get("formatOnSave"),
+        )}`,
+    );
 
     const outside = debounce(() => void this.onOutsideChange(panel, document, session), 250);
     const changeSub = vscode.workspace.onDidChangeTextDocument((e) => {
@@ -228,10 +283,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       const { html, palette } = await this.render(document, project, session.draft, (uri) =>
         panel.webview.asWebviewUri(uri).toString(),
       );
+      trace(`render (${type}): ${blockShape(html)}`);
       void panel.webview.postMessage({
         type,
         html,
         palette,
+        diagnostics: tracing(),
         background: pageBackground(document.uri),
         text: session.draft,
         version: session.rev,
@@ -263,7 +320,38 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel: vscode.WebviewPanel,
     session: Session,
   ): Promise<boolean> {
+    if (!(await this.writeDraft(document, panel, session))) {
+      return false;
+    }
+    if (document.isDirty) {
+      await document.save();
+    }
+    // What the file holds now is what the page shows — including anything a
+    // formatter changed on the way there, which is adopted rather than fought
+    // over: this is the moment the author asked for the file to be written.
+    session.draft = document.getText();
+    session.base = session.draft;
+    await this.storeDraft(document, undefined);
+    await this.postRender(panel, document, "synced");
+    this.postSaveState(panel, session, true);
+    return true;
+  }
+
+  /**
+   * Puts the page into the document as one edit — one undo step, whatever went
+   * into it. This is the whole of a `live` write; a save adds the file to it.
+   */
+  private async writeDraft(
+    document: vscode.TextDocument,
+    panel: vscode.WebviewPanel,
+    session: Session,
+  ): Promise<boolean> {
     const edit = draftEdit(document.getText(), session.draft);
+    trace(
+      edit
+        ? `write: lines ${edit.start}-${edit.end}, ${edit.text.length} characters`
+        : "write: nothing to write",
+    );
     if (edit) {
       const workspaceEdit = new vscode.WorkspaceEdit();
       for (const op of planEditOps(lineDoc(document), [edit])) {
@@ -283,25 +371,16 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         session.own.applying -= 1;
       }
       if (!ok) {
-        getLogger().warn("Visual editor: applyEdit returned false while saving");
+        getLogger().warn("Visual editor: applyEdit returned false while writing the page");
         return false;
       }
       session.own.versions.add(document.version);
       if (session.own.versions.size > 64) {
         session.own.versions.clear();
       }
+      session.base = document.getText();
+      this.postSaveState(panel, session);
     }
-    if (document.isDirty) {
-      await document.save();
-    }
-    // What the file holds now is what the page shows — including anything a
-    // formatter changed on the way there, which is adopted rather than fought
-    // over: this is the moment the author asked for the file to be written.
-    session.draft = document.getText();
-    session.base = session.draft;
-    await this.storeDraft(document, undefined);
-    await this.postRender(panel, document, "synced");
-    this.postSaveState(panel, session, true);
     return true;
   }
 
@@ -334,6 +413,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     session: Session,
   ): Promise<void> {
     const fileText = document.getText();
+    trace(
+      `outside change: file=${fileText.length} chars, page=${session.draft.length} chars, ` +
+        `unsaved=${String(isDraftDirty(session.base, session.draft))}`,
+    );
     if (fileText === session.draft) {
       session.base = fileText; // it changed into what we already show
       this.postSaveState(panel, session);
@@ -371,6 +454,25 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     this.postSaveState(panel, session);
   }
 
+  /** The author's answer to the offer of work left over from a closed editor. */
+  private async resolveKeptDraft(
+    document: vscode.TextDocument,
+    panel: vscode.WebviewPanel,
+    session: Session,
+    action: string,
+  ): Promise<void> {
+    const kept = this.storedDraft(document);
+    if (action === "restore" && kept && kept.base === document.getText()) {
+      session.draft = kept.draft;
+      session.rev += 1;
+      await this.postRender(panel, document, "render");
+      this.postSaveState(panel, session);
+      return;
+    }
+    await this.storeDraft(document, undefined);
+    this.postSaveState(panel, session);
+  }
+
   /**
    * Unsaved work outlives the tab. It is kept per document and offered back
    * when the page is opened again — closing an editor by accident is not a
@@ -403,18 +505,27 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     session: Session,
   ): Promise<void> {
     const m = msg as { type?: string; [k: string]: unknown };
+    if (m.type !== "log" && m.type !== "iconSvgs" && m.type !== "iconNames") {
+      trace(`message: ${String(m.type)}`);
+    }
     switch (m.type) {
+      case "log":
+        // The webview's half of the trace, so both halves read in order in one
+        // place. It sends nothing unless diagnostics are on.
+        getLogger().info(`[page] ${String(m.text ?? "")}`);
+        break;
       case "ready": {
-        // An editor closed with unsaved work left its page behind; it comes back
-        // only if the file has not moved on since, which would make it a
-        // conflict nobody asked for.
-        const kept = this.storedDraft(document);
-        if (kept && kept.base === document.getText() && kept.draft !== kept.base) {
-          session.draft = kept.draft;
-          session.rev += 1;
-        }
         await this.postRender(panel, document, "render");
         this.postSaveState(panel, session);
+        // Opening a page shows the file. Work left unsaved in a closed editor is
+        // offered back rather than restored: closing without saving is an
+        // answer, and a page that silently disagrees with the file on disk is
+        // the kind of thing that gets committed by accident. The offer stands
+        // only while the file still says what it did when the page was left.
+        const kept = this.storedDraft(document);
+        if (kept && kept.base === document.getText() && kept.draft !== kept.base) {
+          void panel.webview.postMessage({ type: "draftAvailable", at: kept.at });
+        }
         await this.postExtraCss(panel, document);
         this.postUiConfig(panel);
         this.postChromeState(panel);
@@ -448,6 +559,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         break;
       case "outsideChange":
         await this.resolveOutsideChange(document, panel, session, String(m.action ?? "keep"));
+        break;
+      case "draft":
+        await this.resolveKeptDraft(document, panel, session, String(m.action ?? "discard"));
         break;
       case "insertAt":
         // The wizard writes into the file, so the page goes there first —
@@ -544,6 +658,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     if (!edits) {
       getLogger().error("Visual editor: a malformed batch of edits was refused");
     }
+    trace(
+      `sync: ${edits ? edits.length : "?"} edits, base=${baseVersion}, rev=${session.rev}` +
+        (edits ? `, ranges=[${edits.map((e) => `${e.start},${e.end}`).join(" ")}]` : ""),
+    );
     if (!edits || baseVersion !== session.rev) {
       // Built against text that has moved on — refuse it and send the page as
       // it stands.
@@ -554,7 +672,17 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     if (edits.length > 0) {
       session.draft = applySyncEdits(session.draft, edits);
       session.rev += 1;
-      await this.storeDraft(document, { draft: session.draft, base: session.base });
+      if (writeMode(document.uri) === "live") {
+        // The buffer follows the page; the file itself is VS Code's business,
+        // through its own save or auto-save.
+        await this.writeDraft(document, panel, session);
+      } else {
+        await this.storeDraft(document, {
+          draft: session.draft,
+          base: session.base,
+          at: Date.now(),
+        });
+      }
     }
     await this.postRender(panel, document, "synced");
     // After the render: the webview's status line is written by both, and what
@@ -933,6 +1061,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   <button id="tbSiteNav" title="${t("Site pages on the left (show/hide)")}"><span class="codicon codicon-layout-sidebar-left"></span></button>
   <button id="tbToc" title="${t("Table of contents (show/hide)")}"><span class="codicon codicon-list-tree"></span></button>
   <button id="tbAsText" title="${esc(t("Open as text"))}"><span class="codicon codicon-go-to-file"></span></button>
+</div>
+<div id="vdraft" class="v-bar" hidden>
+  <span class="codicon codicon-history"></span>
+  <span class="v-bar-text">${esc(t("This page was left with changes that were never saved."))}</span>
+  <button id="vDraftRestore" class="secondary">${esc(t("Bring them back"))}</button>
+  <button id="vDraftDiscard" class="secondary">${esc(t("Discard them"))}</button>
 </div>
 <div id="voutside" class="v-bar" hidden>
   <span class="codicon codicon-warning"></span>

@@ -472,5 +472,8 @@
   "Load the file": "Загрузить файл",
   "Keep my version": "Оставить мою версию",
   "The page could not be written to the file.": "Не удалось записать страницу в файл.",
-  "Save (Cmd/Ctrl+S) — unsaved changes": "Сохранить (Cmd/Ctrl+S) — есть несохранённые изменения"
+  "Save (Cmd/Ctrl+S) — unsaved changes": "Сохранить (Cmd/Ctrl+S) — есть несохранённые изменения",
+  "This page was left with changes that were never saved.": "На этой странице остались изменения, которые не были сохранены.",
+  "Bring them back": "Вернуть их",
+  "Discard them": "Отбросить"
 }

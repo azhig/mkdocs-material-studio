@@ -41,6 +41,8 @@ export interface CoreHost {
   inSub(): boolean;
   /** Asks the extension to render that copy. */
   renderSub(): void;
+  /** The diagnostic trace: what is about to be sent (mkdocsStudio.diagnostics). */
+  traceEdits?(edits: SyncEdit[]): void;
 }
 
 let host: CoreHost;
@@ -344,6 +346,7 @@ export function sendSync(edits: SyncEdit[], history: "push" | "undo" | "redo" = 
     return;
   }
   noteSyncSent();
+  host.traceEdits?.(edits);
   host.post({ type: "sync", baseVersion: version, edits });
 }
 
@@ -429,6 +432,7 @@ export function runSync(): void {
         host.renderSub();
       } else {
         syncInFlight = true;
+        host.traceEdits?.([]);
         host.post({ type: "sync", baseVersion: version, edits: [] });
       }
     }

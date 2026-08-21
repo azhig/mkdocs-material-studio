@@ -250,6 +250,8 @@ Code untouched, and a shortcut you reassign hands its old key straight back.
 | `mkdocsStudio.showSiteHeader`        | `false`                     | Show the site header; the **Header** button toggles it                                               |
 | `mkdocsStudio.showSiteNav`           | `false`                     | Show the page list on the left; the **Navigation** button toggles it                                 |
 | `mkdocsStudio.showToc`               | `false`                     | Show the “On this page” panel; the **Contents** button toggles it                                    |
+| `mkdocsStudio.diagnostics`           | `false`                     | Detailed trace of the visual editor in the extension log — structure only, for reporting a problem   |
+| `mkdocsStudio.writeToDocument`       | `live`                      | When the visual editor writes into the document: `live` as you type, `onSave` only on Cmd/Ctrl+S     |
 | `mkdocsStudio.pageBackground`        | `material`                  | `material` — the colour of the Material scheme; `editor` — the VS Code theme's background            |
 | `mkdocsStudio.palette.light.primary` | _unset_                     | Primary colour of the light scheme; `theme.palette` in `mkdocs.yml` wins, unset keeps Material's own |
 | `mkdocsStudio.palette.light.accent`  | _unset_                     | Accent colour of the light scheme — links and active elements                                        |

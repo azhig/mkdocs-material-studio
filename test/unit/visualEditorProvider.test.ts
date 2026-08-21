@@ -68,13 +68,21 @@ async function sync(
   await panel.send({ type: "sync", baseVersion: rev(panel), edits });
 }
 
-/** Types into the page and then saves it, the way Cmd+S does. */
+/**
+ * Types into the page and then saves it, the way Cmd+S does — and waits for the
+ * save to be reported rather than for a fixed number of ticks. The save writes
+ * the document, renders the page and clears the stored draft; under load the
+ * last of those can land after the message handler has returned.
+ */
 async function syncAndSave(
   panel: FakeWebviewPanel,
   edits: { start: number; end: number; text: string }[],
 ): Promise<void> {
   await sync(panel, edits);
   await panel.send({ type: "save" });
+  for (let i = 0; i < 50 && !panel.ofType("saveState").some((m) => m.justSaved === true); i++) {
+    await settle();
+  }
 }
 
 /** An edit to the file made by somebody else. */
@@ -95,6 +103,11 @@ beforeEach(() => {
   __setSetting("mkdocsStudio.language", "en");
 });
 
+/** Holds the page back until the author saves — see mkdocsStudio.writeToDocument. */
+function holdUntilSaved(): void {
+  __setSetting("mkdocsStudio.writeToDocument", "onSave");
+}
+
 describe("the shell", () => {
   it("is built before anything is posted", async () => {
     const { panel } = await open("# Title\n");
@@ -113,7 +126,50 @@ describe("the shell", () => {
   });
 });
 
-describe("typing: the page changes, the file does not", () => {
+describe("live: the buffer follows the page as it is typed", () => {
+  // What a text editor does, and what this editor does by default: the document
+  // is the page, so the preview, the text tab, VS Code's undo and its save all
+  // work on it directly. Writing the file is VS Code's business — its own save,
+  // or auto-save.
+  it("puts each batch into the document", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await sync(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
+    expect(doc.getText()).toBe("# Title\n\nChanged.\n");
+    expect(doc.saved).toBe(false); // dirty, for VS Code to save when it likes
+    expect(panel.last("saveState")?.unsaved).toBe(false);
+  });
+
+  it("writes one edit per batch, so undo goes back one edit at a time", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await sync(panel, [{ start: 0, end: 1, text: "# Heading\n" }]);
+    await sync(panel, [{ start: 2, end: 3, text: "Rewritten.\n" }]);
+    expect(doc.getText()).toBe("# Heading\n\nRewritten.\n");
+    expect(doc.version).toBe(3); // one per batch, on top of the original
+  });
+
+  it("saving writes the file, with nothing left over", async () => {
+    const { doc, panel } = await open("# Title\n\nBody.\n");
+    await syncAndSave(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
+    expect(doc.getText()).toBe("# Title\n\nChanged.\n");
+    expect(doc.saved).toBe(true);
+  });
+
+  it("leaves nothing behind for a later editor to offer back", async () => {
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    const first = await open("", noProjects(), context, doc);
+    await sync(first.panel, [{ start: 2, end: 3, text: "In the buffer already.\n" }]);
+    first.panel.dispose();
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    expect(again.panel.ofType("draftAvailable")).toHaveLength(0);
+  });
+});
+
+describe("onSave: the page changes, the file does not", () => {
+  beforeEach(holdUntilSaved);
+
   it("keeps a replacement in the draft and leaves the file alone", async () => {
     const { doc, panel } = await open("# Title\n\nBody.\n");
     await sync(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
@@ -129,7 +185,11 @@ describe("typing: the page changes, the file does not", () => {
     await syncAndSave(panel, [{ start: 2, end: 3, text: "Changed.\n" }]);
     expect(doc.getText()).toBe("# Title\n\nChanged.\n");
     expect(doc.saved).toBe(true);
-    expect(panel.last("saveState")).toMatchObject({ unsaved: false, justSaved: true });
+    // The save is reported, and nothing after it claims there is unsaved work.
+    // Asserting on the last message alone made this depend on whether a
+    // debounced check for outside edits had fired yet — green here, red on CI.
+    expect(panel.ofType("saveState").some((m) => m.justSaved === true)).toBe(true);
+    expect(panel.last("saveState")?.unsaved).toBe(false);
   });
 
   it("applies an insert and a delete from one batch", async () => {
@@ -223,37 +283,77 @@ describe("sync: what is refused", () => {
   });
 });
 
-describe("unsaved work outliving the tab", () => {
-  it("comes back when the page is opened again", async () => {
+describe("unsaved work left in a closed editor", () => {
+  beforeEach(holdUntilSaved);
+
+  /** Types into a page, then closes the editor without saving. */
+  async function leaveUnsaved(
+    context: ReturnType<typeof fakeContext>,
+    doc: InstanceType<typeof FakeTextDocument>,
+    text: string,
+  ): Promise<void> {
+    const first = await open("", noProjects(), context, doc);
+    await sync(first.panel, [{ start: 2, end: 3, text }]);
+    first.panel.dispose();
+  }
+
+  it("is offered back, and the page opens on the file", async () => {
+    // Opening a page shows what the file says. Closing an editor without
+    // saving is an answer, and a page that silently disagrees with the file is
+    // the kind of thing that gets committed by accident.
     const context = fakeContext();
     const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
-    const first = await open("", noProjects(), context, doc);
-    await sync(first.panel, [{ start: 2, end: 3, text: "Half a thought.\n" }]);
-    first.panel.dispose();
+    await leaveUnsaved(context, doc, "Half a thought.\n");
 
     const again = await open("", noProjects(), context, doc);
     await again.panel.send({ type: "ready" });
+    expect(again.panel.last("render")?.text).toBe("# Title\n\nBody.\n");
+    expect(again.panel.last("saveState")?.unsaved).toBe(false);
+    expect(again.panel.last("draftAvailable")).toBeDefined();
+  });
+
+  it("comes back when the author asks for it", async () => {
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    await leaveUnsaved(context, doc, "Half a thought.\n");
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    await again.panel.send({ type: "draft", action: "restore" });
     expect(again.panel.last("render")?.text).toBe("# Title\n\nHalf a thought.\n");
     expect(again.panel.last("saveState")?.unsaved).toBe(true);
   });
 
-  it("is not offered back over a file that has moved on since", async () => {
-    // The draft was written against text that no longer exists; restoring it
+  it("is gone for good once it is turned down", async () => {
+    const context = fakeContext();
+    const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
+    await leaveUnsaved(context, doc, "Half a thought.\n");
+
+    const again = await open("", noProjects(), context, doc);
+    await again.panel.send({ type: "ready" });
+    await again.panel.send({ type: "draft", action: "discard" });
+    again.panel.dispose();
+
+    const third = await open("", noProjects(), context, doc);
+    await third.panel.send({ type: "ready" });
+    expect(third.panel.ofType("draftAvailable")).toHaveLength(0);
+  });
+
+  it("is not offered over a file that has moved on since", async () => {
+    // The draft was written against text that no longer exists; taking it back
     // would quietly revert whatever happened to the file in the meantime.
     const context = fakeContext();
     const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
-    const first = await open("", noProjects(), context, doc);
-    await sync(first.panel, [{ start: 2, end: 3, text: "Mine.\n" }]);
-    first.panel.dispose();
+    await leaveUnsaved(context, doc, "Mine.\n");
     doc.setText("# Title\n\nRewritten elsewhere.\n");
 
     const again = await open("", noProjects(), context, doc);
     await again.panel.send({ type: "ready" });
     expect(again.panel.last("render")?.text).toBe("# Title\n\nRewritten elsewhere.\n");
-    expect(again.panel.last("saveState")?.unsaved).toBe(false);
+    expect(again.panel.ofType("draftAvailable")).toHaveLength(0);
   });
 
-  it("is forgotten once it has been saved", async () => {
+  it("is not offered once it has been saved", async () => {
     const context = fakeContext();
     const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
     const first = await open("", noProjects(), context, doc);
@@ -262,15 +362,15 @@ describe("unsaved work outliving the tab", () => {
 
     const again = await open("", noProjects(), context, doc);
     await again.panel.send({ type: "ready" });
-    expect(again.panel.last("saveState")?.unsaved).toBe(false);
     expect(again.panel.last("render")?.text).toBe("# Title\n\nFinished.\n");
+    expect(again.panel.ofType("draftAvailable")).toHaveLength(0);
   });
 
   it("does not come back to undo a checkout of the page it was written on", async () => {
     // Saved, then the file was taken back to what it said before — `git
     // checkout`, an undo in the text tab. A draft still sitting in the store
-    // would match that text again and quietly reapply writing the author had
-    // already decided against.
+    // would match that text again and offer writing the author had already
+    // decided against.
     const context = fakeContext();
     const doc = new FakeTextDocument(vscode.Uri.file("/work/docs/page.md"), "# Title\n\nBody.\n");
     const first = await open("", noProjects(), context, doc);
@@ -280,12 +380,13 @@ describe("unsaved work outliving the tab", () => {
 
     const again = await open("", noProjects(), context, doc);
     await again.panel.send({ type: "ready" });
-    expect(again.panel.last("render")?.text).toBe("# Title\n\nBody.\n");
-    expect(again.panel.last("saveState")?.unsaved).toBe(false);
+    expect(again.panel.ofType("draftAvailable")).toHaveLength(0);
   });
 });
 
 describe("an edit from outside", () => {
+  beforeEach(holdUntilSaved);
+
   it("is adopted quietly when the editor has nothing unsaved", async () => {
     const { doc, panel } = await open("# Title\n\nBody.\n");
     await editFromOutside(doc, "# Title\n\nEdited elsewhere.\n");
