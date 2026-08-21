@@ -4,6 +4,25 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.1 — 2026-08-21
+
+### A page with a footnote stopped losing the caret
+
+The engine draws two blocks of its own at the foot of a page that has notes: the
+separator and the list of note texts. Neither comes from a line of the file, so
+the editor leaves them out of its own list of blocks — but it was counting them
+in the fresh render it compared that list against. The two never matched, so
+every single edit fell through to redrawing the whole page, and the caret went
+to the top of the document with it. On a page with a footnote that happened on
+every keystroke, in every kind of block; two releases of caret repairs were
+aimed at the wrong thing.
+
+The tail is now recognised for what it is: kept out of the count and replaced as
+a whole, while the rest of the page is patched block by block with the caret
+untouched. A test pins the rule down — every block a render produces either
+carries a source line or is one of the engine's own — so a new service block
+cannot quietly bring the problem back.
+
 ## 0.3.0 — 2026-08-21
 
 ### The page is written to the file when you save it

@@ -603,7 +603,14 @@ function applyPatches(
 
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
-  const fresh = Array.from(tpl.content.children);
+  // The engine's own tail — the separator and the list of footnote texts — is
+  // not part of the document: it has no source line, and blocksInOrder leaves
+  // it out. Counting it in `fresh` made the two lists disagree on every page
+  // that has a footnote, so every edit fell through to a full render and the
+  // caret was thrown to the top of the page each time a word was typed.
+  const freshAll = Array.from(tpl.content.children);
+  const fresh = freshAll.filter((el) => !isFootnoteService(el));
+  const service = freshAll.filter(isFootnoteService);
   const ours = blocksInOrder();
 
   if (fresh.length !== ours.length) {
@@ -656,6 +663,7 @@ function applyPatches(
         caretAfterIsland(neu, refresh.index);
       }
     }
+    replaceFootnoteService(service);
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
     decorateCodeNavs();
@@ -709,6 +717,24 @@ function copySrcAttrs(from: Element, to: Element): void {
 // ---------------------------------------------------------------------------
 // Blocks: roles, decoration
 // ---------------------------------------------------------------------------
+
+/**
+ * Puts the freshly rendered footnote tail in place of the old one. It is drawn
+ * by the engine from the definitions in the file, so it is replaced whole
+ * rather than patched — nothing in it is edited directly, and the caret is
+ * never in it.
+ */
+function replaceFootnoteService(service: Element[]): void {
+  for (const el of Array.from(docEl.children)) {
+    if (isFootnoteService(el)) {
+      el.remove();
+    }
+  }
+  for (const el of service) {
+    docEl.appendChild(el);
+    decorateBlock(el as HTMLElement);
+  }
+}
 
 /**
  * Top-level blocks in document order: the known ones (data-src-line) and the
