@@ -122,7 +122,7 @@ import {
   fullText,
   initCore,
   inlineIslands,
-  isFootnoteService,
+  isServiceBlock,
   markDirty,
   mutedRemote,
   noteCatchUp,
@@ -640,6 +640,7 @@ function applyRender(html: string, text: string, ver: number, caret: CaretAnchor
     adoptText(text, ver);
     docEl.innerHTML = html;
     renderedHtml = html;
+    markServiceBlocks(docEl);
     decorateAll();
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
@@ -683,25 +684,23 @@ function applyPatches(
 
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
-  // A block the engine drew by itself — the footnote tail, and whatever a
-  // project's own extensions add — has no source line, and blocksInOrder leaves
-  // it out. Counting such blocks here made the two lists disagree for the life
-  // of the document: every edit failed the count, fell through to a full render
-  // and threw the caret to the top of the page. So the rule is the same on both
-  // sides: what has a source line is the document, and the rest is the engine's.
-  const freshAll = Array.from(tpl.content.children);
-  const fresh = freshAll.filter((el) => el.hasAttribute("data-src-line"));
-  const service = freshAll.filter((el) => !el.hasAttribute("data-src-line"));
-  const ours = blocksInOrder();
+  // Both lists hold everything a render puts on the page, in the order it puts
+  // it there — the blocks from the file and the ones the engine drew. Leaving
+  // the engine's out of one side made the counts disagree for the life of any
+  // document that has a footnote or a raw `<details>`, so every edit fell
+  // through to a full render and threw the caret to the top of the page.
+  markServiceBlocks(tpl.content);
+  const fresh = Array.from(tpl.content.children);
+  const ours = renderedInDom();
   dlog(
-    `patch v${ver}: render has ${fresh.length} document blocks + ${service.length} service, ` +
-      `page has ${ours.length}; ${docShape()}; caret ${caretSpot()}`,
+    `patch v${ver}: render has ${fresh.length} blocks, page has ${ours.length}; ` +
+      `${docShape()}; caret ${caretSpot()}`,
   );
 
   if (fresh.length !== ours.length) {
     dlog(
       "patch gives up — the two disagree on how many blocks there are; " +
-        `render: [${freshAll
+        `render: [${fresh
           .map((el) => `${el.tagName.toLowerCase()}${el.hasAttribute("data-src-line") ? "" : "!"}`)
           .join(" ")}]; page: [${Array.from(docEl.children)
           .map((el) => `${el.tagName.toLowerCase()}${el.hasAttribute("data-src-line") ? "" : "!"}`)
@@ -756,7 +755,6 @@ function applyPatches(
         caretAfterIsland(neu, refresh.index);
       }
     }
-    replaceServiceBlocks(service);
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
     decorateCodeNavs();
@@ -813,26 +811,42 @@ function copySrcAttrs(from: Element, to: Element): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Puts the freshly rendered service blocks in place of the old ones. They are
- * drawn by the engine rather than written in the file, so they are replaced
- * whole rather than patched — nothing in them is edited directly, and the caret
- * is never in one.
+ * Marks the top-level blocks the engine drew by itself — the footnote tail, a
+ * raw `<details>` written as HTML, whatever a project's own extensions add.
+ * They carry no source line because no line of the file produced them.
+ *
+ * The mark is what keeps three different parts of the editor agreeing about
+ * them: the patch counts them (they are on the page, in that order), the block
+ * handle stays off them, and the plan that writes the file knows they are not
+ * the author's new writing. Without it, a block with no source line looked
+ * exactly like a paragraph the author had just typed — the editor tried to add
+ * it to the file, and, when it could not be serialized, silently gave up.
+ *
+ * Only the top level: inside a call-out or a card, a paragraph legitimately has
+ * no source line of its own.
  */
-function replaceServiceBlocks(service: Element[]): void {
-  for (const el of Array.from(docEl.children)) {
-    if (el.classList.contains("vservice")) {
-      el.remove();
+function markServiceBlocks(root: ParentNode): void {
+  for (const el of Array.from(root.children)) {
+    if (!el.hasAttribute("data-src-line")) {
+      el.classList.add("vservice", "visland", "vnoedit");
+      el.setAttribute("contenteditable", "false");
     }
   }
-  for (const el of service) {
-    docEl.appendChild(el);
-    // The mark is what makes them findable next time: `decorateBlock` adds it
-    // to the footnote tail by name, and anything else the engine draws gets it
-    // here, so the same rule covers a project with extensions of its own.
-    el.classList.add("vservice", "visland", "vnoedit");
-    el.setAttribute("contenteditable", "false");
-    decorateBlock(el as HTMLElement);
-  }
+}
+
+/**
+ * The blocks on the page that came from a render, in order: those from the file
+ * and those the engine drew. This is what a fresh render is lined up against —
+ * the editor's own empty lines (the one always waiting at the end, the one a
+ * click opened inside a card) are not part of that and are left out.
+ */
+function renderedInDom(): Element[] {
+  return Array.from(docEl.children).filter(
+    (el) =>
+      el.hasAttribute("data-src-line") ||
+      el.hasAttribute("data-pending") ||
+      el.classList.contains("vservice"),
+  );
 }
 
 /**
@@ -987,7 +1001,14 @@ function decorateBlock(el: Element): void {
     attachIslandTools(el);
     return;
   }
-  if (el.tagName === "DETAILS" && el.classList.contains("admonition")) {
+  // A collapsible section: Material's own `???` call-out, and one written as
+  // `<details markdown="1">`. Both are a summary and a body, and both need the
+  // summary to stay clickable — inside an editable page a click would put a
+  // caret in it instead of opening the section.
+  if (
+    el.tagName === "DETAILS" &&
+    (el.classList.contains("admonition") || el.hasAttribute("data-md-html-open"))
+  ) {
     decorateDetails(el);
     attachIslandTools(el, true);
     const body = el.querySelector(":scope > .adm-body");
@@ -1007,7 +1028,7 @@ function decorateBlock(el: Element): void {
   if (el.tagName === "BLOCKQUOTE") {
     decorateNested(el);
   }
-  if (isFootnoteService(el)) {
+  if (isServiceBlock(el)) {
     // The footnote tail (`<hr class="footnotes-sep">` + `<section class="footnotes">`)
     // is generated by the engine itself: it has no source lines. Mark it as
     // service markup, otherwise the editor would take it for a draft and append

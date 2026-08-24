@@ -4,6 +4,33 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.0 — 2026-08-24
+
+### A collapsible section written as HTML
+
+`<details markdown="1">` — a summary and a table folded away under it — is how
+documentation writes a long reference table. python-markdown renders the
+Markdown inside it; this extension only did that for `<div>` and `<figure>`, so
+such a section came through as raw HTML: the table showed as the pipes and
+dashes it is written with, and the block carried no line of the file.
+
+That last part was doing quiet damage. A block with no source line is one the
+engine drew by itself, and the editor sorts those out of the page — so on any
+page with such a section the page and the fresh render disagreed on how many
+blocks there were, every edit fell through to redrawing the whole page, and
+0.4.0 moved the sections to the bottom of the page on every save.
+
+- `<details>`, `<section>`, `<article>` and `<aside>` now take the `markdown`
+  attribute, next to `<div>` and `<figure>`. The Markdown inside is rendered,
+  the block belongs to the lines it came from, and it goes back into the file
+  with the opening tag the author wrote.
+- A collapsible section behaves like Material's own `???` call-out: click the
+  summary to open it, edit the content in place, double-click the summary to
+  rename it.
+- Anything still left as raw HTML is marked as the engine's own work when the
+  page is drawn — kept where it is, shown, never written back, and counted, so
+  it cannot throw the page off again.
+
 ## 0.4.0 — 2026-08-21
 
 ### Typing goes back into the buffer as you type

@@ -93,9 +93,17 @@ function blockLines(el: Element): string[] {
       if (el.classList.contains("admonition")) {
         return admonitionLines(el);
       }
+      if (el.hasAttribute("data-md-html-open")) {
+        return mdInHtmlLines(el);
+      }
       throw new UnsupportedBlockError("details");
     case "SECTION":
-      throw new UnsupportedBlockError("section (footnotes)");
+    case "ARTICLE":
+    case "ASIDE":
+      if (el.hasAttribute("data-md-html-open")) {
+        return mdInHtmlLines(el);
+      }
+      throw new UnsupportedBlockError(`${tag.toLowerCase()} (not written by the author)`);
     default:
       throw new UnsupportedBlockError(tag.toLowerCase());
   }
@@ -106,11 +114,8 @@ function divLines(el: Element): string[] {
   if (isServiceElement(el)) {
     return [];
   }
-  const htmlOpen = el.getAttribute("data-md-html-open");
-  if (htmlOpen !== null) {
-    // An md_in_html container: the original opening tag + the content + </div>.
-    const body = trimTrailingEmpty(containerLines(el));
-    return [htmlOpen, "", ...body, "", "</div>"];
+  if (el.hasAttribute("data-md-html-open")) {
+    return mdInHtmlLines(el);
   }
   if (cls.contains("adm-body")) {
     // The wrapper around the editable body of details — transparent to serialization.
@@ -775,6 +780,28 @@ function ddLines(dd: Element): string[] {
  * Serialization of a container's block children (blockquote, admonition,
  * tabbed-block…): the blocks are separated by a blank line.
  */
+/**
+ * A container written as HTML with the markdown attribute (`<div markdown>`,
+ * `<details markdown="1">`): the author's own opening tag, the content as
+ * Markdown, and the closing tag for whatever tag that was. The opening tag is
+ * kept verbatim by the render (data-md-html-open), so an untouched block goes
+ * back into the file exactly as it was written.
+ */
+function mdInHtmlLines(el: Element): string[] {
+  const open = el.getAttribute("data-md-html-open");
+  if (open === null) {
+    throw new UnsupportedBlockError("md_in_html container without its opening tag");
+  }
+  // The summary of a <details> is a line of HTML in the file, above the blank
+  // line that starts the Markdown; it is not part of the content.
+  const summary = findChild(el, (c) => c.tagName === "SUMMARY");
+  const head = summary
+    ? [open, `<summary>${inlineChildren(summary, {}).trim()}</summary>`]
+    : [open];
+  const body = trimTrailingEmpty(containerLines(el, (c) => c === summary));
+  return [...head, "", ...body, "", `</${el.tagName.toLowerCase()}>`];
+}
+
 function containerLines(el: Element, skip?: (c: Element) => boolean): string[] {
   const lines: string[] = [];
   let pendingInline = "";

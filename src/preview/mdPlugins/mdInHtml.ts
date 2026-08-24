@@ -14,6 +14,15 @@ import { lineText } from "./blockUtils";
  *   <figcaption>Caption</figcaption>
  *   </figure>
  *
+ *   <details markdown="1">                 ← a collapsible section written as HTML
+ *   <summary>Show the table</summary>
+ *
+ *   | a | b |
+ *   | - | - |
+ *   | 1 | 2 |
+ *
+ *   </details>
+ *
  * The opening tag carrying the markdown attribute must occupy its own line.
  * The content up to the balanced closing tag is parsed as Markdown; the
  * original opening tag is kept in data-md-html-open — the visual editor's serializer
@@ -21,7 +30,11 @@ import { lineText } from "./blockUtils";
  * HTML output (as in python-markdown).
  */
 
-const TAGS = ["div", "figure"];
+// python-markdown allows the attribute on any block-level tag. These are the
+// ones documentation actually uses; a tag left out of the list does not break —
+// it stays raw HTML, the way it was before — but the Markdown written inside it
+// is then shown as the text it is, and the block cannot be edited in place.
+const TAGS = ["div", "figure", "details", "section", "article", "aside"];
 const OPEN_RE = new RegExp(
   `^<(${TAGS.join("|")})(\\s[^>]*)?\\smarkdown(?:="[^"]*")?(\\s[^>]*)?>\\s*$`,
   "i",
