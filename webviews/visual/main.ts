@@ -107,6 +107,7 @@ import {
   repositionHandle,
 } from "./blockHandle";
 import { restoreCaretAnchor, takeCaretAnchor, type CaretAnchor } from "./caretAnchor";
+import { copyNestedSrcAttrs, copySrcAttrs, renderKey } from "./blockPatch";
 import { initIconPicker, openIconPicker } from "./iconPicker";
 import { initMathDialog, openMathDialog } from "./mathDialog";
 import { initMermaidDialog, openMermaidDialog, withDiagramLanguage } from "./mermaidDialog";
@@ -641,6 +642,11 @@ function applyRender(html: string, text: string, ver: number, caret: CaretAnchor
     docEl.innerHTML = html;
     renderedHtml = html;
     markServiceBlocks(docEl);
+    // Before decorateAll: the keys describe the render, not the chrome the
+    // editor hangs on it afterwards, and the next render is compared with them.
+    for (const el of renderedInDom()) {
+      renderedFrom.set(el, renderKey(el));
+    }
     decorateAll();
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
@@ -727,6 +733,8 @@ function applyPatches(
   // normally leave alone — so this one gets replaced anyway and the caret is
   // put back after the piece that has just become the real thing.
   const refresh = takeInlineRefresh();
+  const keys = fresh.map((el) => renderKey(el));
+  let replaced = 0;
   mutedRemote(() => {
     const focusBlock = currentBlock();
     for (let i = 0; i < ours.length; i++) {
@@ -747,19 +755,36 @@ function applyPatches(
         copySrcAttrs(neu, our);
         our.removeAttribute("data-pending");
         noteCatchUp();
+        if (dirty.has(our)) {
+          // What it shows is the author's, ahead of the file — no render
+          // describes it, and the next one has to be put in whole.
+          renderedFrom.delete(our);
+        }
+        continue;
+      }
+      if (!bringIsland && renderedFrom.get(our) === keys[i]) {
+        // The render says exactly what the page already shows. Only the file
+        // lines can have moved, and those are an attribute, not a rebuild.
+        copySrcAttrs(neu, our);
+        copyNestedSrcAttrs(neu, our);
+        our.removeAttribute("data-pending");
         continue;
       }
       docEl.replaceChild(neu, our);
+      renderedFrom.set(neu, keys[i] as string);
       decorateBlock(neu);
+      replaced++;
       if (bringIsland) {
         caretAfterIsland(neu, refresh.index);
       }
     }
     restoreOpenTabs(docEl, tabs);
     ensureTrailingDraft();
-    decorateCodeNavs();
+    if (replaced > 0) {
+      decorateCodeNavs();
+    }
   });
-  dlog(`patch done: ${docShape()}, caret ${caretSpot()}`);
+  dlog(`patch done: ${docShape()}, ${replaced} of ${ours.length} redrawn, caret ${caretSpot()}`);
   if (range0 && caretHome && caretHome.isConnected) {
     const sel = document.getSelection();
     const lost = !sel || sel.rangeCount === 0 || !caretHome.contains(sel.anchorNode);
@@ -768,10 +793,15 @@ function applyPatches(
       sel?.addRange(range0);
     }
   }
-  void renderDiagrams(docEl);
+  if (replaced > 0) {
+    // Every one of these walks the whole document. With nothing replaced there
+    // is nothing for them to find: no diagram lost its rendering, no marker
+    // came back as text, and the handle is still on the block it was on.
+    void renderDiagrams(docEl);
+    decorateAnnotations();
+    repositionHandle();
+  }
   refreshToc();
-  decorateAnnotations();
-  repositionHandle();
   refreshStatus();
   finishRemote();
 }
@@ -795,15 +825,6 @@ function caretAfterIsland(block: HTMLElement, index: number): void {
   const sel = document.getSelection();
   sel?.removeAllRanges();
   sel?.addRange(range);
-}
-
-function copySrcAttrs(from: Element, to: Element): void {
-  for (const name of ["data-src-line", "data-src-end", "data-block-type"]) {
-    const v = from.getAttribute(name);
-    if (v !== null) {
-      to.setAttribute(name, v);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -833,6 +854,19 @@ function markServiceBlocks(root: ParentNode): void {
     }
   }
 }
+
+/**
+ * The markup each block on the page was drawn from. A fresh render that says
+ * the same thing is a block that has not changed: the page already shows it,
+ * and replacing it is work for nothing — on a page of two hundred blocks every
+ * keystroke used to rebuild all two hundred, which is what made typing lag.
+ *
+ * It hangs off the node rather than off its position, so a paragraph opened in
+ * the middle of the page does not make strangers of everything below it.
+ * A block the author has since typed into is dropped from here: what it shows
+ * is theirs, not the render's, and the next render has to be put in.
+ */
+const renderedFrom = new WeakMap<Element, string>();
 
 /**
  * The blocks on the page that came from a render, in order: those from the file

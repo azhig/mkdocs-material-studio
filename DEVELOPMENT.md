@@ -124,12 +124,15 @@ is something to read rather than to guess.
 | `selectionOps.ts`        | the selection, the lines under it, the caret            |
 | `componentMenu.ts`       | the component palette, pinned buttons, the “/” menu     |
 | `tabsGrids.ts`           | content tabs and card grids, managed in place           |
+| `blockPatch.ts`          | whether a block changed, and its file lines             |
 
 ## Key rules
 
 **Block operations go through the source, text input goes through the DOM.** Structural changes (block type, moving, inserting a component) are performed by editing the lines of the file and come back as a ready-made render. Text input and inline formatting live in `contenteditable`. `execCommand` is not suitable for block operations: the browser puts a list inside a paragraph, and such a block cannot be serialized.
 
 **Only the modified block goes into the file.** `serializeTopBlock` is called for blocks from `dirty`, and the edit is sent as a precise range. Untouched blocks stay byte for byte — “opened and closed” must produce an empty `git diff`. This is verified by round-trip tests and is the main invariant of the project.
+
+**A patch replaces only the blocks that changed.** The catch-up render after an edit is lined up against the page block by block, and a block whose markup is word for word what it already shows is left where it is — only its file lines are handed over, all of them, down through the rows of a table (`blockPatch.ts`, remembered per node in `main.ts`). Replacing every block instead cost a third of a second of blocked main thread per keystroke on a page of two hundred blocks, and that is what typing lag was; it also threw away every diagram, open tab and island the page had drawn. A block the author has typed into is dropped from that record: what it shows is theirs, ahead of the file, and the next render has to be put in whole.
 
 **Unknown constructs are not rewritten.** A block that the serializer does not understand is marked as an “island” and is edited only as text. It is better to give up visual editing than to spoil someone else's markup.
 

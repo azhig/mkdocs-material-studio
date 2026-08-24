@@ -4,6 +4,22 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.2 — 2026-08-24
+
+### Typing no longer redraws the page
+
+Every keystroke used to rebuild the whole document. The catch-up render that
+follows an edit was applied by replacing every block on the page with its fresh
+copy, changed or not — on a page of two hundred blocks that is two hundred nodes
+recreated and every button, diagram and island hung on them again, around a
+third of a second of blocked main thread per letter.
+
+A block is now left alone when the render says exactly what it already shows.
+Only its file lines are carried over — those shift for everything below a
+paragraph the author opens, which is why comparing them called every block
+changed. Typing on a long page now replaces nothing at all, and opening a
+paragraph replaces the one paragraph.
+
 ## 0.4.1 — 2026-08-24
 
 ### A collapsible section written as HTML
