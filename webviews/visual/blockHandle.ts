@@ -15,7 +15,7 @@ import {
   dirty,
   docEndsNL,
   docLines,
-  isFootnoteService,
+  isServiceBlock,
   rangeOf,
   requestFullRender,
   runSyncNowThen,
@@ -404,7 +404,7 @@ export function movableSiblings(block: HTMLElement): HTMLElement[] {
       el.hasAttribute("data-src-line") &&
       !el.classList.contains("vlive") &&
       !el.classList.contains("admonition-title") &&
-      !isFootnoteService(el),
+      !isServiceBlock(el),
   );
 }
 

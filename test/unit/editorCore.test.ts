@@ -127,15 +127,22 @@ describe("the document as the core holds it", () => {
     expect(h.core.rangeOf(el)).toEqual({ start: 4, end: 9 });
   });
 
-  it("knows the footnote tail the engine generates and the file does not have", () => {
+  it("knows the blocks the engine drew from the ones the file has", () => {
+    // The footnote tail by name, and anything else the render marked as its
+    // own — a `<details>` written as raw HTML, a block from an extension. Both
+    // look like a paragraph the author just typed, and the plan that writes the
+    // file would put one into the document as if they had.
     const tail = document.createElement("section");
     tail.className = "footnotes";
     const sep = document.createElement("hr");
     sep.className = "footnotes-sep";
+    const marked = document.createElement("details");
+    marked.className = "vservice visland vnoedit";
     const para = document.createElement("p");
-    expect(h.core.isFootnoteService(tail)).toBe(true);
-    expect(h.core.isFootnoteService(sep)).toBe(true);
-    expect(h.core.isFootnoteService(para)).toBe(false);
+    expect(h.core.isServiceBlock(tail)).toBe(true);
+    expect(h.core.isServiceBlock(sep)).toBe(true);
+    expect(h.core.isServiceBlock(marked)).toBe(true);
+    expect(h.core.isServiceBlock(para)).toBe(false);
   });
 });
 

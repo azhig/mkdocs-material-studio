@@ -121,6 +121,18 @@ Another term
 :material-rocket-launch: :fontawesome-brands-github: :octicons-heart-fill-24:
 :smile: :rocket:
 
+## A collapsible section written as HTML
+
+<details markdown="1">
+<summary>Show the table</summary>
+
+| Setting | What it does |
+| ------- | ------------ |
+| `theme` | The look of the built site |
+| `nav` | The order of the pages |
+
+</details>
+
 ## Footnotes
 
 A claim that needs a source[^source], and a second note further down[^aside].

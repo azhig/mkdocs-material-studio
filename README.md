@@ -66,6 +66,8 @@ your version and write it over the file on the next save.
   the colour scheme it belongs to — a light/dark pair (`#only-light` /
   `#only-dark`) is shown the way the site shows it, and the copy of the other
   scheme stays on the page, faded, so it can still be edited.
+- **A collapsible section written as HTML** (`<details markdown="1">` with a
+  table inside) is rendered and edited like Material's own `???` call-out.
 - **A code block is edited in place**, with live highlighting and line numbers;
   the language and the title live in the block menu.
 - **One diagram component for Mermaid and PlantUML**, with language-specific
