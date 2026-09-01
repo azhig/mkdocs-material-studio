@@ -77,7 +77,7 @@ jobs:
 
       - name: GitHub release
         if: steps.plan.outputs.release == 'yes'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # On a push to main the tag does not exist yet — the action creates it
           # on this commit; on a tag push it is the tag that started the run.
