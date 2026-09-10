@@ -34,6 +34,10 @@ icons and emoji, task lists and definition lists. It updates as you type.
   opens in VS Code, an external address in the browser.
 - **A copy button** on every code block, and an **“On this page”** panel with the
   section you are reading highlighted as you scroll.
+- **Find on the page** — `Cmd/Ctrl+F`, in the preview and in the visual editor
+  alike. A webview has no browser search of its own, so this is the one there
+  is: `Enter` and `Shift+Enter` step through the hits, `Esc` closes, and a hit
+  inside a folded call-out or an unopened tab opens it on the way.
 - **Scrolling is synchronized** with the text editor, both ways.
 - **Double-clicking an admonition or a code block** opens a form with its
   parameters, and saves only that block.
@@ -227,6 +231,7 @@ In the visual editor. `Cmd` on macOS, `Ctrl` elsewhere.
 | Quick insert                    | `/` in an empty paragraph                     |
 | Select the block, then around   | `Esc`, again for its container                |
 | Copy / cut that block           | `Cmd+C` · `Cmd+X` with nothing selected       |
+| Find on the page                | `Cmd+F`, `Enter` / `Shift+Enter` to step      |
 
 Component letters: `T` table, `P` image, `C` code, `D` divider, `A` admonition,
 `Shift+T` content tabs, `E` icons and emoji, `G` grid, `M` diagram, `B` button,
@@ -239,8 +244,8 @@ live.
 
 While the visual editor has focus these combinations belong to it, so `Cmd+B`
 makes text bold instead of collapsing the side bar. Only the ones in the list
-are taken: everything else — saving, find, the command palette — reaches VS
-Code untouched, and a shortcut you reassign hands its old key straight back.
+are taken: everything else — saving, the command palette — reaches VS Code
+untouched, and a shortcut you reassign hands its old key straight back.
 
 ## Extension settings
 

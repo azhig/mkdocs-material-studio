@@ -3,6 +3,7 @@
 // content, loads mermaid on demand and provides scroll sync / clicks.
 
 import { decorateCodeNav } from "../shared/codeNav";
+import { initFindBar } from "../shared/findBar";
 import { t } from "../shared/i18n";
 import { initReadOnlyMenu } from "./contextMenu";
 import {
@@ -66,6 +67,16 @@ const btnNav = document.getElementById("btnNav") as HTMLButtonElement;
 const btnToc = document.getElementById("btnToc") as HTMLButtonElement;
 const btnTheme = document.getElementById("btnTheme") as HTMLButtonElement | null;
 const pageToc = document.getElementById("pageToc") as HTMLElement;
+const toolbar = document.getElementById("toolbar") as HTMLElement;
+
+// Find on the page (Cmd/Ctrl+F): a webview gets no browser search, so reading a
+// long page had no way to look anything up. Only the article is searched — the
+// toolbar, the site navigation and the table of contents are chrome around it.
+const findBar = initFindBar({
+  root: () => content,
+  scroller: () => content,
+  topOffset: () => toolbar.getBoundingClientRect().bottom,
+});
 
 btnConfig?.addEventListener("click", () => vscodeApi.postMessage({ type: "openConfig" }));
 btnHead?.addEventListener("click", () =>
@@ -391,6 +402,7 @@ function renderContent(html: string, docId: string): void {
   content.scrollTop = keepScroll;
   setTimeout(() => (suppressScroll = false), 120);
   void renderDiagrams(content);
+  findBar.refresh(); // the page was replaced under the bar
 }
 
 /** Copy button on every code block — as in Material (content.code.copy). */

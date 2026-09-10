@@ -1,0 +1,107 @@
+/* “Find on this page” — the bar of both webviews and the colour of a hit.
+
+   The highlight is painted through the CSS Custom Highlight API, so it needs no
+   markup around the text it colours: in the visual editor a <mark> would be an
+   edit of the author's document. Where the API is missing (an older engine in
+   the harness) the rules below simply do nothing and the bar still navigates. */
+
+.mkfind {
+  position: fixed;
+  top: 0;
+  right: 20px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--vscode-widget-border, #8884);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  /* Every fallback here ends at the editor's own colours rather than at a
+     literal: a light slab under light-grey text is what a half-defined theme
+     produced, and the page behind the bar is the one thing always painted. */
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #f8f8f8));
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground, inherit));
+  box-shadow: 0 2px 8px #00000026;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+}
+/* display: flex would otherwise win over the browser's own [hidden] rule. */
+.mkfind[hidden] {
+  display: none;
+}
+.mkfind-ico {
+  opacity: 0.7;
+  font-size: 14px;
+}
+.mkfind-q {
+  width: 14rem;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 2px 6px;
+  border-radius: 2px;
+  color: var(--vscode-input-foreground, var(--vscode-foreground, inherit));
+  background: var(--vscode-input-background, var(--vscode-editor-background, #fff));
+  border: 1px solid var(--vscode-input-border, #8884);
+}
+.mkfind-q:focus {
+  outline: 1px solid var(--vscode-focusBorder, #007fd4);
+  outline-offset: -1px;
+}
+.mkfind-empty .mkfind-q {
+  border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+.mkfind-count {
+  min-width: 6.5rem;
+  text-align: right;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.mkfind button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: inherit;
+  background: transparent;
+}
+.mkfind button:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8882);
+}
+.mkfind button.on {
+  border-color: var(--vscode-focusBorder, #007fd4);
+  background: var(--vscode-inputOption-activeBackground, #007fd433);
+  color: var(--vscode-inputOption-activeForeground, inherit);
+}
+.mkfind-opt {
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+/* “Whole word”, the way VS Code draws it: the letters underlined at both ends. */
+.mkfind-opt[data-opt="word"] {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.mkfind button .codicon {
+  font-size: 14px;
+}
+
+/* The colours are ours and not the editor's on purpose. A page is drawn in the
+   Material scheme, not in the VS Code theme, so `findMatchBackground` — chosen
+   against the editor's own background — lands on the wrong page: in the dark
+   theme it is a dark slab under dark-scheme text. An opaque yellow with dark
+   letters reads in both schemes, which is the whole job here. */
+::highlight(mkdocs-find) {
+  background-color: #ffe08a;
+  color: #1b1b1b;
+}
+::highlight(mkdocs-find-current) {
+  background-color: #ff9d2e;
+  color: #1b1b1b;
+}

@@ -8,13 +8,18 @@ import {
 } from "../../webviews/visual/hotkeys";
 
 /** Event template: by default only Cmd is pressed. */
-function ev(code: string, mods: Partial<Record<"meta" | "ctrl" | "shift" | "alt", boolean>> = {}) {
+function ev(
+  code: string,
+  mods: Partial<Record<"meta" | "ctrl" | "shift" | "alt", boolean>> = {},
+  key?: string,
+) {
   return {
     metaKey: mods.meta ?? true,
     ctrlKey: mods.ctrl ?? false,
     shiftKey: mods.shift ?? false,
     altKey: mods.alt ?? false,
     code,
+    key,
   };
 }
 
@@ -83,6 +88,26 @@ describe("hot keys: matching an event", () => {
     expect(eventHotKey(ev("Enter"))).toBeNull();
     expect(eventHotKey(ev("Tab"))).toBeNull();
     expect(eventHotKey(ev("ShiftLeft", { shift: true }))).toBeNull();
+  });
+
+  it("falls back to the letter when the event carries no physical key", () => {
+    // An event synthesized by automation, and some input methods, leave code
+    // empty; without this the shortcuts were dead for anything but a human hand
+    // on a keyboard.
+    expect(eventHotKey(ev("", {}, "f"))).toEqual({ shift: false, alt: false, key: "F" });
+    expect(eventHotKey(ev("", { shift: true }, "7"))).toEqual({
+      shift: true,
+      alt: false,
+      key: "7",
+    });
+  });
+
+  it("refuses a local letter when there is no physical key to read", () => {
+    // Greek “φ” sits on the same key as “f”, but nothing here says so — and
+    // guessing would bind a shortcut to whatever the layout happens to print.
+    expect(eventHotKey(ev("", {}, "φ"))).toBeNull();
+    expect(eventHotKey(ev("", {}, "Enter"))).toBeNull();
+    expect(eventHotKey(ev(""))).toBeNull();
   });
 
   it("produces a key matching the config entry", () => {

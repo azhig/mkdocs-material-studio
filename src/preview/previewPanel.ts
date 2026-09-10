@@ -527,6 +527,7 @@ export class PreviewPanelManager {
     const paletteCss = this.assetUri(webview, "assets", "material-css", "palette.css");
     const fallbackCss = this.assetUri(webview, "assets", "fallback.css");
     const chromeCss = this.assetUri(webview, "assets", "site-chrome.css");
+    const findCss = this.assetUri(webview, "assets", "find.css");
     const codiconCss = this.assetUri(webview, "assets", "vendor", "codicons", "codicon.css");
     const katexCss = this.assetUri(webview, "assets", "vendor", "katex", "katex.min.css");
     const previewJs = this.assetUri(webview, "dist", "webview", "preview.js");
@@ -551,6 +552,7 @@ export class PreviewPanelManager {
 <link rel="stylesheet" href="${katexCss}" />
 <link rel="stylesheet" href="${fallbackCss}" />
 <link rel="stylesheet" href="${chromeCss}" />
+<link rel="stylesheet" href="${findCss}" />
 <link rel="stylesheet" href="${codiconCss}" />
 <style>
   #toolbar {

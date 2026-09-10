@@ -21,6 +21,8 @@ export interface HotKeyEvent {
   shiftKey: boolean;
   altKey: boolean;
   code: string;
+  /** Only read when `code` is empty — see eventHotKey. */
+  key?: string;
 }
 
 /** “⌘⇧8” on macOS, “Ctrl+Shift+8” elsewhere. */
@@ -63,6 +65,16 @@ export function parseHotKey(text: string): HotKey | null {
 export function eventHotKey(e: HotKeyEvent): HotKey | null {
   if (!e.metaKey && !e.ctrlKey) {
     return null;
+  }
+  if (e.code === "") {
+    // Some input methods — and every keystroke a test or a screen recorder
+    // synthesizes — carry no physical key at all. A single Latin letter or
+    // digit in `key` is then the only thing there is to go on, and it cannot be
+    // mistaken for a local one: a Greek layout puts “φ” there, not “f”.
+    const typed = /^[a-z0-9]$/i.exec(e.key ?? "")?.[0];
+    return typed === undefined
+      ? null
+      : { shift: e.shiftKey, alt: e.altKey, key: typed.toUpperCase() };
   }
   const letter = /^Key([A-Z])$/.exec(e.code)?.[1] ?? /^Digit([0-9])$/.exec(e.code)?.[1];
   const key = letter ?? (e.code === "Backslash" ? "\\" : null);

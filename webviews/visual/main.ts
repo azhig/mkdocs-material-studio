@@ -14,12 +14,14 @@ import { canSerialize } from "./htmlToMd";
 import {
   claimKey,
   consumeHotKey,
+  hotKeyOf,
   initKeyBindings,
   keyOverrides,
   refreshHotkeyLabels,
   setKeyOverrides,
   type KeyCommand,
 } from "./keyBindings";
+import { eventHotKey, hotKeyToString } from "./hotkeys";
 import { endKeyCapture, initSettingsUi, openEditorSettings } from "./settingsUi";
 import {
   annotTips,
@@ -199,6 +201,7 @@ import {
   type SiteChromeHooks,
 } from "../shared/siteChrome";
 import { t } from "../shared/i18n";
+import { initFindBar } from "../shared/findBar";
 import { applyExtraCss, initMermaid, renderDiagrams, watchMermaidReveal } from "../shared/mermaid";
 import { applyBackground, applyPalette, toggleTheme, type PaletteMsg } from "../shared/scheme";
 import {
@@ -246,6 +249,20 @@ const docEl = document.getElementById("doc") as HTMLElement;
 // A diagram in an unopened tab or a folded call-out waits for the reveal.
 watchMermaidReveal(docEl);
 const statusEl = document.getElementById("vstatus") as HTMLElement;
+
+// Find on the page (Cmd/Ctrl+F). A webview has no browser search of its own, so
+// this is the only one there is. The highlight never inserts a node — a <mark>
+// around a hit would be an edit of the author's file — and opening a folded
+// call-out to show a match goes through mutedRemote for the same reason.
+// The key comes from the command registry rather than from the bar, so it can
+// be reassigned like every other shortcut here.
+const findBar = initFindBar({
+  root: () => docEl,
+  scroller: () => null, // the page itself scrolls, #doc has no box of its own
+  topOffset: () => document.getElementById("vt")?.getBoundingClientRect().bottom ?? 0,
+  apply: (change) => mutedRemote(change),
+  bindOpenKey: false,
+});
 
 // The document itself, the batches sent to the file and the history live in
 // editorCore; everything below draws it and edits it.
@@ -663,6 +680,7 @@ function applyRender(html: string, text: string, ver: number, caret: CaretAnchor
   repositionHandle(); // blocks were recreated — the handle either moves or disappears
   refreshStatus();
   finishRemote();
+  findBar.refresh(); // the ranges it holds point into blocks that are gone
 }
 
 /**
@@ -804,6 +822,7 @@ function applyPatches(
   refreshToc();
   refreshStatus();
   finishRemote();
+  findBar.refresh(); // typing changes what there is to find, and where
 }
 
 /**
@@ -1635,6 +1654,13 @@ function keyCommands(): KeyCommand[] {
       run: () => redoOnce(),
     },
     {
+      id: "view.find",
+      group: t("Edit"),
+      label: t("Find on this page"),
+      def: { key: "F" },
+      run: () => findBar.open(),
+    },
+    {
       id: "list.ul",
       group: STYLE_COMMAND_GROUP,
       label: LIST_NAME.ul,
@@ -2087,6 +2113,15 @@ document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "s" || e.key === "S")) {
     e.preventDefault();
     saveNow();
+    return;
+  }
+  // Find works with the focus anywhere on the page — the toolbar, the table of
+  // contents — not only inside the document.
+  const findKey = hotKeyOf("view.find");
+  const pressed = eventHotKey(e);
+  if (findKey && pressed && hotKeyToString(pressed) === hotKeyToString(findKey)) {
+    claimKey(e);
+    findBar.open();
     return;
   }
   if (e.key !== "Escape" || cancelBlockDrag() || hasActivePopup()) {

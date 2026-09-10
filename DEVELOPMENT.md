@@ -85,7 +85,7 @@ src/
   configEditor/ model and panel of the mkdocs.yml visual editor
   wysiwyg/      CustomTextEditorProvider of the visual editor
 webviews/       browser bundles: preview / wizard / config / visual / harness
-  shared/       code shared by several webviews (codeNav, pasteSanitize, siteChrome)
+  shared/       code shared by several webviews (codeNav, pasteSanitize, siteChrome, findBar)
   visual/       the visual editor, one module per area — see below
 assets/         Material CSS and icons, KaTeX fonts, codicons, our own styles
 test/unit/      unit tests (vitest, happy-dom for DOM modules)
@@ -135,6 +135,15 @@ is something to read rather than to guess.
 **A patch replaces only the blocks that changed.** The catch-up render after an edit is lined up against the page block by block, and a block whose markup is word for word what it already shows is left where it is — only its file lines are handed over, all of them, down through the rows of a table (`blockPatch.ts`, remembered per node in `main.ts`). Replacing every block instead cost a third of a second of blocked main thread per keystroke on a page of two hundred blocks, and that is what typing lag was; it also threw away every diagram, open tab and island the page had drawn. A block the author has typed into is dropped from that record: what it shows is theirs, ahead of the file, and the next render has to be put in whole.
 
 **Unknown constructs are not rewritten.** A block that the serializer does not understand is marked as an “island” and is edited only as text. It is better to give up visual editing than to spoil someone else's markup.
+
+**Finding text may not touch the document.** `Cmd/Ctrl+F` opens the same bar in
+both webviews (`shared/findBar.ts`, with the rules in `findModel.ts` and the DOM
+side in `findText.ts`). The hits are coloured through the CSS Custom Highlight
+API — ranges painted with no markup around them — because a `<mark>` in the
+visual editor is an edit: the MutationObserver would see it, the block would be
+serialized with it, and searching a page would rewrite the file. The one change
+a search does make — opening a folded call-out to show a hit — goes through
+`mutedRemote` for the same reason.
 
 **Programmatic DOM mutations must not look like user edits.** Any change made from code is performed inside `mutedRemote(...)`, which synchronously calls `observer.takeRecords()` when it finishes — otherwise `MutationObserver` will deliver the records after the flag has been cleared, and the document “writes itself” with an avalanche of false edits.
 

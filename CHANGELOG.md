@@ -4,6 +4,32 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.0 — 2026-09-10
+
+### Find on the page
+
+`Cmd/Ctrl+F` did nothing in the preview and in the visual editor. A webview gets
+no browser search: the keystroke arrives as a plain key, and a long reference
+page had no way to look anything up — the one thing a reader does most.
+
+Both now open a find bar under the toolbar. `Enter` and `Shift+Enter` step
+through the hits, `Esc` closes it, `Aa` and `ab` narrow the search to the case
+and to whole words, and the counter says which hit of how many you are on. A hit
+inside a folded call-out or an unopened tab opens it on the way there.
+
+The highlight paints the text without wrapping it in anything. That is not a
+detail in the visual editor: a `<mark>` around a hit is a change to the
+document, and searching a page would have rewritten it — the hits are coloured
+through the CSS Custom Highlight API instead, and the file is untouched by a
+search.
+
+In the editor the shortcut is a command like the others, listed under **Keyboard
+shortcuts** in the gear popup and reassignable there.
+
+- A shortcut whose keystroke carries no physical key — some input methods, and
+  anything synthesized — is now recognized by its letter. Every shortcut of the
+  editor was dead for those.
+
 ## 0.4.2 — 2026-08-24
 
 ### Typing no longer redraws the page

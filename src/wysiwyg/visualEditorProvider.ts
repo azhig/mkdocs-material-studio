@@ -987,6 +987,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     const fallbackCss = this.asset(webview, "assets", "fallback.css");
     const chromeCss = this.asset(webview, "assets", "site-chrome.css");
     const visualCss = this.asset(webview, "assets", "visual.css");
+    const findCss = this.asset(webview, "assets", "find.css");
     const katexCss = this.asset(webview, "assets", "vendor", "katex", "katex.min.css");
     const codiconCss = this.asset(webview, "assets", "vendor", "codicons", "codicon.css");
     const visualJs = this.asset(webview, "dist", "webview", "visual.js");
@@ -1023,6 +1024,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 <link rel="stylesheet" href="${fallbackCss}" />
 <link rel="stylesheet" href="${chromeCss}" />
 <link rel="stylesheet" href="${visualCss}" />
+<link rel="stylesheet" href="${findCss}" />
 </head>
 <body class="${bodyClass}">
 <div id="vt">
